@@ -86,8 +86,11 @@ export default function Header() {
           </button>
 
           {/* Logo */}
-          <Link href="/" className="flex-shrink-0 flex items-center justify-center">
-            <img src={logoPath} alt="Saada Pâtisserie" className="h-10 md:h-14 object-contain" />
+          <Link href="/" className="flex-shrink-0 flex items-center gap-3">
+            <img src={logoPath} alt="Saada Pâtisserie" className="h-12 md:h-16 object-contain" />
+            <span className="hidden sm:block font-serif text-xl md:text-2xl tracking-widest text-foreground select-none">
+              SAADA
+            </span>
           </Link>
 
           {/* Desktop Nav */}

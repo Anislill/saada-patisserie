@@ -8,12 +8,13 @@ import {
   LayoutDashboard, ShoppingBag, PackageSearch, Users,
   Ticket, Settings, LogOut, Plus, Edit2, Trash2,
   X, Menu, ChevronRight, Eye, EyeOff, Tag, Store,
-  AlertCircle
+  AlertCircle, Image
 } from "lucide-react";
 import logoPath from "@assets/0_file_00000000873481f494288e53319f68ef-removebg-preview_1785313194757.png";
+import { useSiteSettingsStore } from "@/store/siteSettingsStore";
 
 /* ─────────────────────────── types ─────────────────────────── */
-type Tab = "dashboard" | "produits" | "commandes" | "clients" | "promotions" | "parametres";
+type Tab = "dashboard" | "produits" | "commandes" | "clients" | "promotions" | "contenu" | "parametres";
 
 interface Coupon {
   id: string; code: string; discount: number; minOrder: number;
@@ -404,6 +405,108 @@ function PromotionsTab() {
   );
 }
 
+/* ─────────────────── CONTENU TAB ─────────────────── */
+function ContenuTab() {
+  const { heroImageUrl, setHeroImageUrl } = useSiteSettingsStore();
+  const [inputUrl, setInputUrl] = React.useState(heroImageUrl);
+  const [saved, setSaved] = React.useState(false);
+  const [previewError, setPreviewError] = React.useState(false);
+
+  const save = () => {
+    setHeroImageUrl(inputUrl.trim());
+    setSaved(true);
+    setPreviewError(false);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const reset = () => {
+    setInputUrl("");
+    setHeroImageUrl("");
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  return (
+    <div>
+      <h2 className="text-2xl font-serif mb-6">Contenu de la boutique</h2>
+
+      {/* Hero Image Section */}
+      <section className="bg-background border border-border rounded-sm p-6 space-y-5">
+        <h3 className="font-serif text-lg pb-3 border-b border-border flex items-center gap-2">
+          <Image size={18} /> Image héro de la page d'accueil
+        </h3>
+
+        <p className="text-sm text-muted-foreground">
+          Collez l'URL directe d'une image (JPG, PNG, WebP) ou une URL Firebase Storage.
+          Laissez vide pour utiliser l'image par défaut.
+        </p>
+
+        <div className="space-y-3">
+          <label className="text-sm font-medium block">URL de l'image héro</label>
+          <div className="flex gap-3">
+            <Input
+              value={inputUrl}
+              onChange={(e) => {
+                setInputUrl(e.target.value);
+                setPreviewError(false);
+              }}
+              placeholder="https://..."
+              className="flex-1 font-mono text-xs"
+            />
+            <Button
+              onClick={save}
+              className="bg-secondary text-white hover:bg-secondary/90 rounded-sm shrink-0"
+            >
+              {saved ? "✓ Enregistré" : "Appliquer"}
+            </Button>
+          </div>
+          {inputUrl && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={reset}
+              className="text-muted-foreground text-xs h-7 px-2"
+            >
+              Réinitialiser (image par défaut)
+            </Button>
+          )}
+        </div>
+
+        {/* Preview */}
+        {(inputUrl || heroImageUrl) && (
+          <div>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2 font-sans">Aperçu</p>
+            {previewError ? (
+              <div className="w-full h-48 bg-muted/40 border border-border flex items-center justify-center text-sm text-muted-foreground rounded-sm">
+                Image non chargée — vérifiez l'URL
+              </div>
+            ) : (
+              <div className="relative w-full aspect-[16/7] overflow-hidden rounded-sm border border-border">
+                <img
+                  src={inputUrl || heroImageUrl}
+                  alt="Aperçu héro"
+                  className="w-full h-full object-cover"
+                  onError={() => setPreviewError(true)}
+                  onLoad={() => setPreviewError(false)}
+                />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <span className="text-white font-serif text-xl opacity-60">Aperçu héro</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!inputUrl && !heroImageUrl && (
+          <div className="w-full h-32 bg-muted/30 border border-dashed border-border rounded-sm flex items-center justify-center text-sm text-muted-foreground">
+            Image par défaut active — collez une URL pour la remplacer
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 /* ─────────────────── SETTINGS TAB ─────────────────── */
 function SettingsTab() {
   const [saved, setSaved] = React.useState(false);
@@ -524,6 +627,7 @@ const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ComponentT
   { id: "commandes",   label: "Commandes",           shortLabel: "Commandes",icon: ShoppingBag },
   { id: "clients",     label: "Clients",             shortLabel: "Clients",  icon: Users },
   { id: "promotions",  label: "Promotions",          shortLabel: "Promos",   icon: Ticket },
+  { id: "contenu",     label: "Contenu",             shortLabel: "Contenu",  icon: Image },
   { id: "parametres",  label: "Paramètres",          shortLabel: "Réglages", icon: Settings },
 ];
 
@@ -667,6 +771,7 @@ export default function AdminPage() {
           {activeTab === "commandes"  && <OrdersTab />}
           {activeTab === "clients"    && <ClientsTab />}
           {activeTab === "promotions" && <PromotionsTab />}
+          {activeTab === "contenu"    && <ContenuTab />}
           {activeTab === "parametres" && <SettingsTab />}
         </main>
       </div>
