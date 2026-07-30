@@ -200,7 +200,7 @@ export default function CheckoutPage() {
                       <p className="text-xs text-muted-foreground mt-1">Qté: {item.quantity}</p>
                     </div>
                     <div className="font-medium text-sm">
-                      {(item.price * item.quantity).toFixed(2)} €
+                      {(item.price * item.quantity).toFixed(2)} د.ت
                     </div>
                   </div>
                 ))}
@@ -209,18 +209,18 @@ export default function CheckoutPage() {
               <div className="border-t border-border pt-6 space-y-4 mb-6 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Sous-total</span>
-                  <span className="font-medium">{total.toFixed(2)} €</span>
+                  <span className="font-medium">{total.toFixed(2)} د.ت</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Livraison</span>
-                  <span className="font-medium">{deliveryFee === 0 ? 'Offerte' : `${deliveryFee.toFixed(2)} €`}</span>
+                  <span className="font-medium">{deliveryFee === 0 ? 'Offerte' : `${deliveryFee.toFixed(2)} د.ت`}</span>
                 </div>
               </div>
 
               <div className="border-t border-border pt-6">
                 <div className="flex justify-between items-end">
                   <span className="text-lg font-serif">Total</span>
-                  <span className="text-2xl font-serif font-medium">{finalTotal.toFixed(2)} €</span>
+                  <span className="text-2xl font-serif font-medium">{finalTotal.toFixed(2)} د.ت</span>
                 </div>
               </div>
             </div>

@@ -30,7 +30,7 @@ export default function MyOrdersPage() {
                     <Badge variant="outline">{order.status}</Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mb-1">Passée le {order.date}</p>
-                  <p className="text-sm text-muted-foreground">{order.itemsCount} article{order.itemsCount > 1 ? 's' : ''} • Total: {order.total.toFixed(2)} €</p>
+                  <p className="text-sm text-muted-foreground">{order.itemsCount} article{order.itemsCount > 1 ? 's' : ''} • Total: {order.total.toFixed(2)} د.ت</p>
                 </div>
                 <div className="flex gap-3">
                   <Link href={`/suivi-commande?id=${order.id}`}>

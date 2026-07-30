@@ -142,12 +142,12 @@ export default function ProductDetailPage() {
             <div className="flex items-center gap-4 mb-6">
               {product.discountedPrice ? (
                 <>
-                  <span className="text-2xl font-medium text-foreground">{product.discountedPrice} €</span>
-                  <span className="text-xl text-muted-foreground line-through">{product.price} €</span>
+                  <span className="text-2xl font-medium text-foreground">{product.discountedPrice} د.ت</span>
+                  <span className="text-xl text-muted-foreground line-through">{product.price} د.ت</span>
                   <Badge variant="destructive">-{Math.round(((product.price - product.discountedPrice) / product.price) * 100)}%</Badge>
                 </>
               ) : (
-                <span className="text-2xl font-medium text-foreground">{product.price} €</span>
+                <span className="text-2xl font-medium text-foreground">{product.price} د.ت</span>
               )}
             </div>
 

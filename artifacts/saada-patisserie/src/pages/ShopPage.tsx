@@ -156,7 +156,7 @@ export default function ShopPage() {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+              <div className="grid grid-cols-2 xl:grid-cols-3 gap-3 md:gap-6">
                 {filteredProducts.map((product, idx) => (
                   <SectionReveal key={product.id} delay={Math.min(idx * 0.05, 0.5)}>
                     <ProductCard product={product} />

@@ -72,7 +72,7 @@ export default function OrderTrackingPage() {
               <p className="text-muted-foreground">Passée le {result.date}</p>
             </div>
             <div className="text-xl font-medium">
-              Total: {result.total.toFixed(2)} €
+              Total: {result.total.toFixed(2)} د.ت
             </div>
           </div>
 

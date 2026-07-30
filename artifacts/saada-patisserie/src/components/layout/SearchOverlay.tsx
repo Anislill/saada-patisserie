@@ -75,7 +75,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                       <div>
                         <h3 className="font-serif text-xl group-hover:text-secondary transition-colors">{product.name}</h3>
                         <p className="text-muted-foreground line-clamp-1">{product.shortDescription}</p>
-                        <p className="text-foreground font-medium mt-1">{product.price} €</p>
+                        <p className="text-foreground font-medium mt-1">{product.price} د.ت</p>
                       </div>
                     </div>
                   ))}

@@ -61,7 +61,7 @@ export default function CartPage() {
                       <div>
                         <h3 className="font-serif text-lg leading-tight">{item.name}</h3>
                         {item.variant && <p className="text-sm text-muted-foreground">{item.variant}</p>}
-                        <p className="font-medium mt-1">{item.price} €</p>
+                        <p className="font-medium mt-1">{item.price} د.ت</p>
                       </div>
                       <div className="flex items-center justify-between mt-4">
                         <div className="flex items-center border border-border">
@@ -94,7 +94,7 @@ export default function CartPage() {
                   </div>
                   
                   <div className="col-span-2 hidden md:block text-center font-medium">
-                    {item.price} €
+                    {item.price} د.ت
                   </div>
                   
                   <div className="col-span-2 hidden md:flex justify-center">
@@ -106,7 +106,7 @@ export default function CartPage() {
                   </div>
                   
                   <div className="col-span-2 hidden md:block text-right font-serif text-lg">
-                    {(item.price * item.quantity).toFixed(2)} €
+                    {(item.price * item.quantity).toFixed(2)} د.ت
                   </div>
                 </div>
               ))}
@@ -121,18 +121,18 @@ export default function CartPage() {
               <div className="space-y-4 mb-6 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t('cart.subtotal')}</span>
-                  <span className="font-medium">{total.toFixed(2)} €</span>
+                  <span className="font-medium">{total.toFixed(2)} د.ت</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Livraison</span>
-                  <span className="font-medium">{delivery === 0 ? 'Offerte' : `${delivery.toFixed(2)} €`}</span>
+                  <span className="font-medium">{delivery === 0 ? 'Offerte' : `${delivery.toFixed(2)} د.ت`}</span>
                 </div>
               </div>
 
               <div className="border-t border-border pt-6 mb-6">
                 <div className="flex justify-between items-end">
                   <span className="text-lg font-serif">Total</span>
-                  <span className="text-2xl font-serif font-medium">{(total + delivery).toFixed(2)} €</span>
+                  <span className="text-2xl font-serif font-medium">{(total + delivery).toFixed(2)} د.ت</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2 text-right">Taxes incluses</p>
               </div>

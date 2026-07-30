@@ -69,7 +69,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                         <div>
                           <h3 className="font-serif text-foreground line-clamp-1">{item.name}</h3>
                           {item.variant && <p className="text-sm text-muted-foreground">{item.variant}</p>}
-                          <p className="text-secondary font-medium mt-1">{item.price} €</p>
+                          <p className="text-secondary font-medium mt-1">{item.price} د.ت</p>
                         </div>
                         <div className="flex items-center justify-between mt-2">
                           <div className="flex items-center border border-border">
@@ -105,7 +105,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               <div className="border-t border-border p-6 bg-muted/20">
                 <div className="flex justify-between items-center mb-6 text-lg font-serif">
                   <span>{t('cart.subtotal')}</span>
-                  <span>{getTotal()} €</span>
+                  <span>{getTotal()} د.ت</span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-6 text-center">
                   {t('cart.deliveryEstimate')}

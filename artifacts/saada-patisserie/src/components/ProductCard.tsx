@@ -94,11 +94,11 @@ export function ProductCard({ product }: { product: Product }) {
         <div className="flex items-center justify-center gap-2">
           {product.discountedPrice ? (
             <>
-              <span className="text-muted-foreground line-through text-sm">{product.price} €</span>
-              <span className="text-foreground font-medium">{product.discountedPrice} €</span>
+              <span className="text-muted-foreground line-through text-sm">{product.price} د.ت</span>
+              <span className="text-foreground font-medium">{product.discountedPrice} د.ت</span>
             </>
           ) : (
-            <span className="text-foreground font-medium">{product.price} €</span>
+            <span className="text-foreground font-medium">{product.price} د.ت</span>
           )}
         </div>
       </div>

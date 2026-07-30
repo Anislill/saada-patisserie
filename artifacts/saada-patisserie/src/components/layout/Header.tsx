@@ -10,7 +10,7 @@ import CartDrawer from "./CartDrawer";
 import SearchOverlay from "./SearchOverlay";
 
 export default function Header() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [location] = useLocation();
   const cartCount = useCartStore((state) => state.getItemCount());
   const wishlistCount = useWishlistStore((state) => state.productIds.length);
@@ -28,11 +28,6 @@ export default function Header() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng);
-    document.documentElement.dir = lng === 'ar' ? 'rtl' : 'ltr';
-  };
 
   const navLinks = [
     { href: "/", label: t('nav.home') },
@@ -54,7 +49,7 @@ export default function Header() {
           >
             <div className="whitespace-nowrap overflow-hidden">
               <span className="inline-block animate-[marquee_15s_linear_infinite]">
-                Livraison gratuite à partir de 100€ d'achats • Découvrez notre nouvelle collection printemps
+                Livraison gratuite à partir de 100 د.ت d'achats • Découvrez notre nouvelle collection printemps
               </span>
             </div>
             <button 
@@ -110,14 +105,6 @@ export default function Header() {
 
           {/* Right Icons */}
           <div className="flex items-center gap-4 md:gap-6">
-            <div className="hidden md:flex items-center gap-2 mr-2 text-xs font-serif uppercase tracking-widest text-muted-foreground">
-              <button onClick={() => changeLanguage('fr')} className={`hover:text-foreground ${i18n.language === 'fr' ? 'text-foreground' : ''}`}>FR</button>
-              <span>|</span>
-              <button onClick={() => changeLanguage('ar')} className={`hover:text-foreground ${i18n.language === 'ar' ? 'text-foreground' : ''}`}>AR</button>
-              <span>|</span>
-              <button onClick={() => changeLanguage('en')} className={`hover:text-foreground ${i18n.language === 'en' ? 'text-foreground' : ''}`}>EN</button>
-            </div>
-
             <button onClick={() => setIsSearchOpen(true)} className="text-foreground hover:text-secondary transition-colors">
               <Search size={20} strokeWidth={1.5} />
             </button>
@@ -188,11 +175,6 @@ export default function Header() {
                 <Heart size={20} /> {t('nav.wishlist')} ({wishlistCount})
               </Link>
 
-              <div className="mt-auto pt-8 flex gap-4 text-sm font-sans uppercase tracking-widest text-muted-foreground">
-                <button onClick={() => changeLanguage('fr')} className={i18n.language === 'fr' ? 'text-foreground font-bold' : ''}>FR</button>
-                <button onClick={() => changeLanguage('ar')} className={i18n.language === 'ar' ? 'text-foreground font-bold' : ''}>AR</button>
-                <button onClick={() => changeLanguage('en')} className={i18n.language === 'en' ? 'text-foreground font-bold' : ''}>EN</button>
-              </div>
             </div>
           </motion.div>
         )}
