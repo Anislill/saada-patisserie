@@ -1,0 +1,1 @@
+- [GitHub remote setup](github-remote.md) — origin is Anislill/saada-patisserie; token stored in local git remote URL; push with `git push origin main`
