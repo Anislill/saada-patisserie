@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Saada Pâtisserie"
+version = "1.0.0"
+id = "artifacts/saada-patisserie"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20972
+
+[services.development]
+run = "pnpm --filter @workspace/saada-patisserie run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/saada-patisserie", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/saada-patisserie/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20972"
+BASE_PATH = "/"

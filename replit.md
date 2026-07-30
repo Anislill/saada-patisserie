@@ -1,45 +1,110 @@
-# [Project name]
+# Saada Pâtisserie
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A complete luxury French pastry e-commerce website with full admin dashboard, multilingual support (FR/AR/EN), Firebase backend, and production-ready architecture.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/saada-patisserie run dev` — run the storefront (port auto-assigned)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080, not used by main app)
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
+- **Frontend**: React + Vite + TypeScript, Tailwind CSS, Framer Motion, Wouter routing
+- **State**: Zustand (cart, wishlist, auth) — persisted to localStorage
+- **Backend**: Firebase (Auth + Firestore + Storage)
+- **i18n**: i18next — French primary, Arabic, English
+- **UI**: shadcn/ui components, Lucide icons
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/saada-patisserie/src/` — main app
+  - `pages/` — all customer + admin pages
+  - `components/layout/` — Header, Footer, CartDrawer, SearchOverlay
+  - `components/admin/` — AdminLayout sidebar
+  - `lib/firebase.ts` — Firebase init (reads VITE_ env vars)
+  - `lib/firestore.ts` — all Firestore data helpers (currently uses seed data; activate to use real Firestore)
+  - `lib/i18n.ts` — i18n config
+  - `store/` — Zustand stores (cartStore, wishlistStore, authStore)
+  - `locales/` — translation files (fr.ts, ar.ts, en.ts)
+- `attached_assets/` — logo + generated product images
+
+## Brand Identity
+
+- Logo: `attached_assets/0_file_00000000873481f494288e53319f68ef-removebg-preview_1785313194757.png`
+- Background: #FAF9F6 | Text: #0F0E0D | Accent: #1F3D2E | Borders/Gold: #C9A867 | Error: #8A2E2E
+- Fonts: Playfair Display (headings) + Montserrat (body)
+
+## Customer Routes
+
+| Path | Page |
+|------|------|
+| `/` | Home — hero, categories, bestsellers, testimonials, newsletter |
+| `/boutique` | Shop — product grid with sidebar filters |
+| `/boutique/:slug` | Product detail — gallery, variants, add to cart |
+| `/panier` | Cart page |
+| `/commande` | Checkout — multi-step with delivery/pickup |
+| `/commande/confirmation` | Order confirmation |
+| `/suivi-commande` | Order tracking |
+| `/compte` | Auth — login / register |
+| `/compte/profil` | Profile editor |
+| `/compte/commandes` | Order history |
+| `/compte/favoris` | Wishlist |
+| `/a-propos` | About |
+| `/contact` | Contact form |
+| `/faq` | FAQ accordion |
+| `/mentions-legales` | Legal |
+| `/politique-confidentialite` | Privacy |
+
+## Admin Routes (`/admin/*`)
+
+| Path | Page |
+|------|------|
+| `/admin` | Login (Firebase Auth) |
+| `/admin/dashboard` | Overview stats |
+| `/admin/produits` | Product list |
+| `/admin/produits/nouveau` | Add product |
+| `/admin/produits/:id` | Edit product |
+| `/admin/categories` | Category management |
+| `/admin/commandes` | Orders list |
+| `/admin/commandes/:id` | Order detail + status |
+| `/admin/clients` | Customer list |
+| `/admin/promotions` | Coupons & promos |
+| `/admin/contenu` | Content (banners, FAQ, testimonials) |
+| `/admin/parametres` | Store settings (info, delivery, SEO, social) |
+| `/admin/comptes` | Admin user management |
+
+## Firebase Setup
+
+Required secrets (set in Replit Secrets):
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
+
+Firebase services needed: Authentication (Email/Password), Firestore, Storage.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
-
-## Product
-
-_Describe the high-level user-facing capabilities of this app once they exist._
-
-## User preferences
-
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Firebase SDK runs entirely client-side — no Express API routes used for app data
+- Seed data in `firestore.ts` provides full content even before Firestore is activated
+- Zustand stores persist cart/wishlist to localStorage for guest users
+- Admin protected via Firebase Auth + Firestore `isAdmin` flag on user document
+- RTL layout auto-applied when Arabic language is selected (html dir attribute)
+- Color palette applied as CSS custom properties in `index.css` (HSL values)
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- `src/hooks/use-toast.ts` re-exports from `use-toast-core.ts` — do NOT make it self-import
+- All VITE_ env vars must be prefixed with `VITE_` to be accessible in the frontend
+- When Arabic is active, the entire layout flips to RTL — test all components in both directions
 
-## Pointers
+## User preferences
 
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Brand name: Saada Pâtisserie
+- Primary language: French
+- Payment: Cash on delivery only
+- Logo file: `attached_assets/0_file_00000000873481f494288e53319f68ef-removebg-preview_1785313194757.png`
