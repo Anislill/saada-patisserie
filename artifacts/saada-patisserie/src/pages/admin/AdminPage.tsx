@@ -1,0 +1,675 @@
+import * as React from "react";
+import { useLocation } from "wouter";
+import { useAuthStore } from "@/store/authStore";
+import { SEED_PRODUCTS, SEED_CATEGORIES, Product } from "@/lib/firestore";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  LayoutDashboard, ShoppingBag, PackageSearch, Users,
+  Ticket, Settings, LogOut, Plus, Edit2, Trash2,
+  X, Menu, ChevronRight, Eye, EyeOff, Tag, Store,
+  AlertCircle
+} from "lucide-react";
+import logoPath from "@assets/0_file_00000000873481f494288e53319f68ef-removebg-preview_1785313194757.png";
+
+/* ─────────────────────────── types ─────────────────────────── */
+type Tab = "dashboard" | "produits" | "commandes" | "clients" | "promotions" | "parametres";
+
+interface Coupon {
+  id: string; code: string; discount: number; minOrder: number;
+  expiry: string; active: boolean;
+}
+
+/* ─────────────────────── empty-state banner ─────────────────── */
+function FirebaseBanner() {
+  return (
+    <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-sm mb-6 text-sm">
+      <AlertCircle size={16} className="shrink-0 mt-0.5" />
+      <span>
+        Connectez Firebase pour voir les vraies statistiques, commandes et clients en temps réel.
+        Les données affichées ici sont les données initiales du catalogue.
+      </span>
+    </div>
+  );
+}
+
+/* ─────────────────────── stat card ─────────────────────── */
+function StatCard({ label, value, sub, icon: Icon, color = "text-secondary" }: {
+  label: string; value: string; sub?: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  color?: string;
+}) {
+  return (
+    <div className="bg-background border border-border p-6 rounded-sm">
+      <div className="flex justify-between items-start mb-4">
+        <div className={`p-2 bg-secondary/10 rounded-sm ${color}`}><Icon size={20} /></div>
+        {sub && <span className="text-xs font-medium text-muted-foreground">{sub}</span>}
+      </div>
+      <p className="text-muted-foreground text-sm font-medium mb-1">{label}</p>
+      <p className="text-2xl font-serif">{value}</p>
+    </div>
+  );
+}
+
+/* ─────────────────── DASHBOARD TAB ─────────────────── */
+function DashboardTab() {
+  return (
+    <div>
+      <h2 className="text-2xl font-serif mb-6">Tableau de Bord</h2>
+      <FirebaseBanner />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+        <StatCard label="Chiffre d'Affaires" value="0 €" sub="Ce mois" icon={Tag} />
+        <StatCard label="Commandes" value="0" sub="Ce mois" icon={ShoppingBag} />
+        <StatCard label="Nouveaux Clients" value="0" sub="Ce mois" icon={Users} />
+        <StatCard label="Produits Actifs" value={SEED_PRODUCTS.filter(p => p.isAvailable).length.toString()} icon={PackageSearch} />
+      </div>
+      {/* recent orders */}
+      <div className="bg-background border border-border rounded-sm overflow-hidden">
+        <div className="p-5 border-b border-border">
+          <h3 className="font-serif text-lg">Dernières Commandes</h3>
+        </div>
+        <div className="p-10 text-center text-muted-foreground text-sm">
+          <ShoppingBag size={32} className="mx-auto mb-3 opacity-30" />
+          <p>Aucune commande pour l'instant.</p>
+          <p className="mt-1 text-xs">Les commandes apparaîtront ici une fois Firebase connecté.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────── PRODUCTS TAB ─────────────────── */
+function ProductsTab() {
+  const [products, setProducts] = React.useState<Product[]>(SEED_PRODUCTS);
+  const [editing, setEditing] = React.useState<Product | null>(null);
+  const [showForm, setShowForm] = React.useState(false);
+  const [form, setForm] = React.useState<Partial<Product>>({ isAvailable: true, categories: [], flavors: [], images: [] });
+
+  const openAdd = () => {
+    setEditing(null);
+    setForm({ isAvailable: true, categories: [], flavors: [], images: [] });
+    setShowForm(true);
+  };
+  const openEdit = (p: Product) => {
+    setEditing(p);
+    setForm({ ...p });
+    setShowForm(true);
+  };
+  const deleteProduct = (id: string) => {
+    if (confirm("Supprimer ce produit ?")) setProducts(prev => prev.filter(p => p.id !== id));
+  };
+  const toggleAvail = (id: string) => {
+    setProducts(prev => prev.map(p => p.id === id ? { ...p, isAvailable: !p.isAvailable } : p));
+  };
+  const saveProduct = () => {
+    if (!form.name || !form.price) return;
+    if (editing) {
+      setProducts(prev => prev.map(p => p.id === editing.id ? { ...p, ...form } as Product : p));
+    } else {
+      const newP: Product = {
+        id: `p${Date.now()}`,
+        slug: (form.name ?? "").toLowerCase().replace(/\s+/g, "-"),
+        name: form.name ?? "",
+        price: Number(form.price) ?? 0,
+        description: form.description ?? "",
+        shortDescription: form.shortDescription ?? "",
+        categories: form.categories ?? [],
+        flavors: form.flavors ?? [],
+        images: form.images ?? [],
+        isAvailable: form.isAvailable ?? true,
+      };
+      setProducts(prev => [...prev, newP]);
+    }
+    setShowForm(false);
+  };
+
+  return (
+    <div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+        <h2 className="text-2xl font-serif">Produits <span className="text-base text-muted-foreground font-sans">({products.length})</span></h2>
+        <Button onClick={openAdd} className="bg-secondary text-white hover:bg-secondary/90 rounded-sm">
+          <Plus size={16} className="mr-2" /> Ajouter un produit
+        </Button>
+      </div>
+
+      <div className="bg-background border border-border rounded-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-muted/40 text-muted-foreground font-medium border-b border-border text-xs uppercase tracking-wide">
+              <tr>
+                <th className="px-5 py-3">Produit</th>
+                <th className="px-5 py-3 hidden md:table-cell">Catégorie</th>
+                <th className="px-5 py-3">Prix</th>
+                <th className="px-5 py-3">Statut</th>
+                <th className="px-5 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {products.map(product => (
+                <tr key={product.id} className="hover:bg-muted/20 transition-colors">
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-3">
+                      {product.images[0] && (
+                        <div className="w-9 h-9 shrink-0 overflow-hidden border border-border rounded-sm bg-muted">
+                          <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <span className="font-medium text-foreground line-clamp-1">{product.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">
+                    {product.categories.filter(c => !["bestsellers","featured"].includes(c))[0] ?? "—"}
+                  </td>
+                  <td className="px-5 py-3 font-medium">{product.price} €</td>
+                  <td className="px-5 py-3">
+                    <button onClick={() => toggleAvail(product.id)}
+                      className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-sm border transition-colors ${product.isAvailable ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}`}>
+                      {product.isAvailable ? <Eye size={11} /> : <EyeOff size={11} />}
+                      {product.isAvailable ? 'En ligne' : 'Masqué'}
+                    </button>
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => openEdit(product)} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm transition-colors" title="Modifier"><Edit2 size={15} /></button>
+                      <button onClick={() => deleteProduct(product.id)} className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-red-50 rounded-sm transition-colors" title="Supprimer"><Trash2 size={15} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Product Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-background border border-border rounded-sm w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-xl">
+            <div className="p-6 border-b border-border flex justify-between items-center">
+              <h3 className="font-serif text-xl">{editing ? "Modifier le produit" : "Nouveau produit"}</h3>
+              <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Nom du produit *</label>
+                <Input value={form.name ?? ""} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: Coffret Signature" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium block mb-1.5">Prix (€) *</label>
+                  <Input type="number" value={form.price ?? ""} onChange={e => setForm(f => ({ ...f, price: Number(e.target.value) }))} placeholder="85" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium block mb-1.5">Prix promo (€)</label>
+                  <Input type="number" value={form.discountedPrice ?? ""} onChange={e => setForm(f => ({ ...f, discountedPrice: e.target.value ? Number(e.target.value) : undefined }))} placeholder="70" />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Description courte</label>
+                <Input value={form.shortDescription ?? ""} onChange={e => setForm(f => ({ ...f, shortDescription: e.target.value }))} placeholder="Une ligne d'accroche" />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Description complète</label>
+                <textarea
+                  value={form.description ?? ""}
+                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                  rows={3}
+                  className="w-full border border-input bg-background rounded-sm px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                  placeholder="Description détaillée du produit..."
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Catégories (séparées par des virgules)</label>
+                <Input
+                  value={(form.categories ?? []).join(", ")}
+                  onChange={e => setForm(f => ({ ...f, categories: e.target.value.split(",").map(s => s.trim()).filter(Boolean) }))}
+                  placeholder="Coffrets Gourmands, bestsellers"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Saveurs (séparées par des virgules)</label>
+                <Input
+                  value={(form.flavors ?? []).join(", ")}
+                  onChange={e => setForm(f => ({ ...f, flavors: e.target.value.split(",").map(s => s.trim()).filter(Boolean) }))}
+                  placeholder="Amande, Pistache, Rose"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <input type="checkbox" id="avail" checked={form.isAvailable ?? true}
+                  onChange={e => setForm(f => ({ ...f, isAvailable: e.target.checked }))}
+                  className="w-4 h-4 accent-secondary" />
+                <label htmlFor="avail" className="text-sm font-medium cursor-pointer">Produit visible sur la boutique</label>
+              </div>
+            </div>
+            <div className="p-6 border-t border-border flex gap-3 justify-end">
+              <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-sm">Annuler</Button>
+              <Button onClick={saveProduct} className="bg-secondary text-white hover:bg-secondary/90 rounded-sm">
+                {editing ? "Enregistrer" : "Ajouter"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────── ORDERS TAB ─────────────────── */
+function OrdersTab() {
+  return (
+    <div>
+      <h2 className="text-2xl font-serif mb-6">Commandes</h2>
+      <div className="bg-background border border-border rounded-sm overflow-hidden">
+        <div className="p-10 text-center text-muted-foreground text-sm">
+          <ShoppingBag size={40} className="mx-auto mb-4 opacity-25" />
+          <p className="font-medium text-base text-foreground/60">Aucune commande</p>
+          <p className="mt-2 max-w-xs mx-auto">Les commandes passées par vos clients apparaîtront ici une fois Firebase connecté.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────── CLIENTS TAB ─────────────────── */
+function ClientsTab() {
+  return (
+    <div>
+      <h2 className="text-2xl font-serif mb-6">Clients</h2>
+      <div className="bg-background border border-border rounded-sm overflow-hidden">
+        <div className="p-10 text-center text-muted-foreground text-sm">
+          <Users size={40} className="mx-auto mb-4 opacity-25" />
+          <p className="font-medium text-base text-foreground/60">Aucun client enregistré</p>
+          <p className="mt-2 max-w-xs mx-auto">La liste des clients s'alimentera automatiquement lorsque des comptes seront créés sur la boutique.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────── PROMOTIONS TAB ─────────────────── */
+function PromotionsTab() {
+  const [coupons, setCoupons] = React.useState<Coupon[]>([]);
+  const [showForm, setShowForm] = React.useState(false);
+  const [form, setForm] = React.useState<Partial<Coupon>>({ active: true, discount: 10, minOrder: 0 });
+
+  const saveCoupon = () => {
+    if (!form.code || !form.discount) return;
+    setCoupons(prev => [...prev, {
+      id: `c${Date.now()}`,
+      code: (form.code ?? "").toUpperCase(),
+      discount: Number(form.discount),
+      minOrder: Number(form.minOrder ?? 0),
+      expiry: form.expiry ?? "",
+      active: form.active ?? true,
+    }]);
+    setForm({ active: true, discount: 10, minOrder: 0 });
+    setShowForm(false);
+  };
+  const deleteCoupon = (id: string) => setCoupons(prev => prev.filter(c => c.id !== id));
+  const toggleCoupon = (id: string) => setCoupons(prev => prev.map(c => c.id === id ? { ...c, active: !c.active } : c));
+
+  return (
+    <div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+        <h2 className="text-2xl font-serif">Promotions & Coupons</h2>
+        <Button onClick={() => setShowForm(true)} className="bg-secondary text-white hover:bg-secondary/90 rounded-sm">
+          <Plus size={16} className="mr-2" /> Créer un coupon
+        </Button>
+      </div>
+
+      {coupons.length === 0 ? (
+        <div className="bg-background border border-border rounded-sm p-10 text-center text-muted-foreground text-sm">
+          <Ticket size={40} className="mx-auto mb-4 opacity-25" />
+          <p className="font-medium text-base text-foreground/60">Aucun coupon</p>
+          <p className="mt-2">Créez des codes promo pour fidéliser vos clients.</p>
+        </div>
+      ) : (
+        <div className="bg-background border border-border rounded-sm overflow-hidden">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-muted/40 text-muted-foreground font-medium border-b border-border text-xs uppercase tracking-wide">
+              <tr>
+                <th className="px-5 py-3">Code</th>
+                <th className="px-5 py-3">Réduction</th>
+                <th className="px-5 py-3 hidden sm:table-cell">Commande min.</th>
+                <th className="px-5 py-3 hidden md:table-cell">Expiration</th>
+                <th className="px-5 py-3">Statut</th>
+                <th className="px-5 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {coupons.map(c => (
+                <tr key={c.id} className="hover:bg-muted/20">
+                  <td className="px-5 py-3 font-mono font-bold text-secondary">{c.code}</td>
+                  <td className="px-5 py-3">{c.discount}%</td>
+                  <td className="px-5 py-3 hidden sm:table-cell">{c.minOrder > 0 ? `${c.minOrder} €` : "—"}</td>
+                  <td className="px-5 py-3 hidden md:table-cell text-muted-foreground">{c.expiry || "—"}</td>
+                  <td className="px-5 py-3">
+                    <button onClick={() => toggleCoupon(c.id)}
+                      className={`px-2 py-1 text-xs rounded-sm border ${c.active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-muted text-muted-foreground border-border'}`}>
+                      {c.active ? "Actif" : "Inactif"}
+                    </button>
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    <button onClick={() => deleteCoupon(c.id)} className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-red-50 rounded-sm transition-colors"><Trash2 size={15} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Coupon Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-background border border-border rounded-sm w-full max-w-md shadow-xl">
+            <div className="p-6 border-b border-border flex justify-between items-center">
+              <h3 className="font-serif text-xl">Nouveau coupon</h3>
+              <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Code promo *</label>
+                <Input value={form.code ?? ""} onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="ETE2025" className="font-mono uppercase" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium block mb-1.5">Réduction (%) *</label>
+                  <Input type="number" min={1} max={100} value={form.discount ?? ""} onChange={e => setForm(f => ({ ...f, discount: Number(e.target.value) }))} placeholder="10" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium block mb-1.5">Commande min. (€)</label>
+                  <Input type="number" min={0} value={form.minOrder ?? ""} onChange={e => setForm(f => ({ ...f, minOrder: Number(e.target.value) }))} placeholder="0" />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Date d'expiration</label>
+                <Input type="date" value={form.expiry ?? ""} onChange={e => setForm(f => ({ ...f, expiry: e.target.value }))} />
+              </div>
+              <div className="flex items-center gap-3">
+                <input type="checkbox" id="couponActive" checked={form.active ?? true}
+                  onChange={e => setForm(f => ({ ...f, active: e.target.checked }))}
+                  className="w-4 h-4 accent-secondary" />
+                <label htmlFor="couponActive" className="text-sm font-medium cursor-pointer">Activer immédiatement</label>
+              </div>
+            </div>
+            <div className="p-6 border-t border-border flex gap-3 justify-end">
+              <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-sm">Annuler</Button>
+              <Button onClick={saveCoupon} className="bg-secondary text-white hover:bg-secondary/90 rounded-sm">Créer</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────── SETTINGS TAB ─────────────────── */
+function SettingsTab() {
+  const [saved, setSaved] = React.useState(false);
+  const [settings, setSettings] = React.useState({
+    storeName: "Saada Pâtisserie",
+    email: "contact@saada-patisserie.com",
+    phone: "",
+    address: "",
+    city: "",
+    deliveryFee: "5",
+    freeDeliveryFrom: "100",
+    currency: "EUR",
+    instagram: "",
+    facebook: "",
+    whatsapp: "",
+    announcementBar: "Livraison gratuite à partir de 100€ d'achats · Découvrez notre nouvelle collection printemps",
+    announcementActive: true,
+  });
+
+  const save = () => {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const field = (label: string, key: keyof typeof settings, type = "text", placeholder = "") => (
+    <div>
+      <label className="text-sm font-medium block mb-1.5">{label}</label>
+      <Input
+        type={type}
+        value={settings[key] as string}
+        onChange={e => setSettings(s => ({ ...s, [key]: e.target.value }))}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+        <h2 className="text-2xl font-serif">Paramètres du magasin</h2>
+        <Button onClick={save} className="bg-secondary text-white hover:bg-secondary/90 rounded-sm">
+          {saved ? "✓ Enregistré" : "Enregistrer"}
+        </Button>
+      </div>
+
+      <div className="space-y-6">
+        {/* Informations */}
+        <section className="bg-background border border-border rounded-sm p-6">
+          <h3 className="font-serif text-lg mb-5 pb-3 border-b border-border flex items-center gap-2"><Store size={18} /> Informations générales</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {field("Nom de la boutique", "storeName")}
+            {field("Email de contact", "email", "email")}
+            {field("Téléphone", "phone", "tel", "+33 6 00 00 00 00")}
+            {field("Adresse", "address", "text", "12 rue de la Paix")}
+            {field("Ville", "city", "text", "Paris")}
+            <div>
+              <label className="text-sm font-medium block mb-1.5">Devise</label>
+              <select
+                value={settings.currency}
+                onChange={e => setSettings(s => ({ ...s, currency: e.target.value }))}
+                className="w-full border border-input bg-background rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="EUR">EUR — Euro (€)</option>
+                <option value="MAD">MAD — Dirham marocain (د.م.)</option>
+                <option value="DZD">DZD — Dinar algérien (د.ج)</option>
+                <option value="TND">TND — Dinar tunisien (د.ت)</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {/* Livraison */}
+        <section className="bg-background border border-border rounded-sm p-6">
+          <h3 className="font-serif text-lg mb-5 pb-3 border-b border-border">Livraison</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {field("Frais de livraison (€)", "deliveryFee", "number")}
+            {field("Livraison gratuite à partir de (€)", "freeDeliveryFrom", "number")}
+          </div>
+        </section>
+
+        {/* Barre d'annonce */}
+        <section className="bg-background border border-border rounded-sm p-6">
+          <h3 className="font-serif text-lg mb-5 pb-3 border-b border-border">Barre d'annonce</h3>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <input type="checkbox" id="annActive" checked={settings.announcementActive}
+                onChange={e => setSettings(s => ({ ...s, announcementActive: e.target.checked }))}
+                className="w-4 h-4 accent-secondary" />
+              <label htmlFor="annActive" className="text-sm font-medium cursor-pointer">Afficher la barre d'annonce</label>
+            </div>
+            <div>
+              <label className="text-sm font-medium block mb-1.5">Texte de l'annonce</label>
+              <Input value={settings.announcementBar}
+                onChange={e => setSettings(s => ({ ...s, announcementBar: e.target.value }))}
+                placeholder="Livraison gratuite à partir de 100€..." />
+            </div>
+          </div>
+        </section>
+
+        {/* Réseaux sociaux */}
+        <section className="bg-background border border-border rounded-sm p-6">
+          <h3 className="font-serif text-lg mb-5 pb-3 border-b border-border">Réseaux sociaux</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {field("Instagram", "instagram", "url", "https://instagram.com/saada")}
+            {field("Facebook", "facebook", "url", "https://facebook.com/saada")}
+            {field("WhatsApp", "whatsapp", "tel", "+33600000000")}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────── MAIN COMPONENT ─────────────────────── */
+const TABS: { id: Tab; label: string; shortLabel: string; icon: React.ComponentType<{ size?: number }> }[] = [
+  { id: "dashboard",   label: "Tableau de Bord",   shortLabel: "Accueil",  icon: LayoutDashboard },
+  { id: "produits",    label: "Produits",            shortLabel: "Produits", icon: PackageSearch },
+  { id: "commandes",   label: "Commandes",           shortLabel: "Commandes",icon: ShoppingBag },
+  { id: "clients",     label: "Clients",             shortLabel: "Clients",  icon: Users },
+  { id: "promotions",  label: "Promotions",          shortLabel: "Promos",   icon: Ticket },
+  { id: "parametres",  label: "Paramètres",          shortLabel: "Réglages", icon: Settings },
+];
+
+export default function AdminPage() {
+  const [, setLocation] = useLocation();
+  const { user, setUser } = useAuthStore();
+  const [activeTab, setActiveTab] = React.useState<Tab>("dashboard");
+  const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
+
+  // Auth guard
+  React.useEffect(() => {
+    if (!user) setLocation("/admin");
+  }, [user, setLocation]);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center text-muted-foreground text-sm">Redirection…</div>
+      </div>
+    );
+  }
+
+  const handleLogout = () => {
+    setUser(null);
+    setLocation("/admin");
+  };
+
+  const selectTab = (tab: Tab) => {
+    setActiveTab(tab);
+    setMobileSidebarOpen(false);
+  };
+
+  return (
+    <div className="min-h-screen flex bg-[#F5F5F4] font-sans">
+      {/* ── Desktop Sidebar ── */}
+      <aside className="w-60 bg-[#111111] text-white hidden lg:flex flex-col shrink-0">
+        <div className="p-5 border-b border-white/10 flex items-center gap-3">
+          <img src={logoPath} alt="Saada" className="h-8 w-8 object-contain filter invert" />
+          <span className="font-serif text-lg text-[#C9A867]">Admin</span>
+        </div>
+        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+          {TABS.map(tab => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button key={tab.id} onClick={() => selectTab(tab.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors text-left ${active ? 'bg-[#C9A867] text-black font-semibold' : 'text-white/65 hover:bg-white/10 hover:text-white'}`}>
+                <Icon size={16} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="p-3 border-t border-white/10">
+          <button onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-white/60 hover:bg-white/10 hover:text-red-400 transition-colors">
+            <LogOut size={16} />
+            Déconnexion
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Mobile Overlay Sidebar ── */}
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileSidebarOpen(false)} />
+          <aside className="absolute left-0 top-0 bottom-0 w-64 bg-[#111111] text-white flex flex-col">
+            <div className="p-5 border-b border-white/10 flex justify-between items-center">
+              <span className="font-serif text-lg text-[#C9A867]">Saada Admin</span>
+              <button onClick={() => setMobileSidebarOpen(false)} className="text-white/60 hover:text-white"><X size={20} /></button>
+            </div>
+            <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+              {TABS.map(tab => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+                return (
+                  <button key={tab.id} onClick={() => selectTab(tab.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors text-left ${active ? 'bg-[#C9A867] text-black font-semibold' : 'text-white/65 hover:bg-white/10 hover:text-white'}`}>
+                    <Icon size={16} />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </nav>
+            <div className="p-3 border-t border-white/10">
+              <button onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-white/60 hover:bg-white/10 hover:text-red-400 transition-colors">
+                <LogOut size={16} />Déconnexion
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* ── Main ── */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Mobile Top Bar */}
+        <header className="bg-white border-b border-border h-14 flex items-center justify-between px-4 lg:hidden sticky top-0 z-40">
+          <button onClick={() => setMobileSidebarOpen(true)} className="p-1 text-muted-foreground hover:text-foreground">
+            <Menu size={22} />
+          </button>
+          <span className="font-serif text-base">Saada Admin</span>
+          <button onClick={handleLogout} className="p-1 text-muted-foreground hover:text-red-500"><LogOut size={18} /></button>
+        </header>
+
+        {/* Desktop Top Bar */}
+        <header className="bg-white border-b border-border h-14 hidden lg:flex items-center justify-between px-6 sticky top-0 z-40">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Admin</span>
+            <ChevronRight size={14} />
+            <span className="text-foreground font-medium">{TABS.find(t => t.id === activeTab)?.label}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <a href="/" target="_blank" rel="noopener noreferrer"
+              className="text-xs text-muted-foreground hover:text-foreground border border-border rounded-sm px-3 py-1.5 transition-colors">
+              Voir la boutique ↗
+            </a>
+            <span className="text-sm text-muted-foreground">{user.email ?? "Admin"}</span>
+          </div>
+        </header>
+
+        {/* Mobile Bottom Tab Bar */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-border flex">
+          {TABS.map(tab => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button key={tab.id} onClick={() => selectTab(tab.id)}
+                className={`flex-1 flex flex-col items-center justify-center py-2 text-[10px] gap-0.5 transition-colors ${active ? 'text-[#1F3D2E] font-semibold' : 'text-muted-foreground'}`}>
+                <Icon size={18} />
+                {tab.shortLabel}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-24 lg:pb-8">
+          {activeTab === "dashboard"  && <DashboardTab />}
+          {activeTab === "produits"   && <ProductsTab />}
+          {activeTab === "commandes"  && <OrdersTab />}
+          {activeTab === "clients"    && <ClientsTab />}
+          {activeTab === "promotions" && <PromotionsTab />}
+          {activeTab === "parametres" && <SettingsTab />}
+        </main>
+      </div>
+    </div>
+  );
+}

@@ -23,9 +23,7 @@ import NotFoundPage from '@/pages/NotFoundPage';
 
 // Admin Pages
 import AdminLoginPage from '@/pages/admin/AdminLoginPage';
-import AdminDashboardPage from '@/pages/admin/AdminDashboardPage';
-import AdminProductsPage from '@/pages/admin/AdminProductsPage';
-import AdminOrdersPage from '@/pages/admin/AdminOrdersPage';
+import AdminPage from '@/pages/admin/AdminPage';
 
 // Init i18n
 import '@/lib/i18n';
@@ -55,9 +53,7 @@ function Router() {
       
       {/* Admin Routes */}
       <Route path="/admin" component={AdminLoginPage} />
-      <Route path="/admin/dashboard" component={AdminDashboardPage} />
-      <Route path="/admin/produits" component={AdminProductsPage} />
-      <Route path="/admin/commandes" component={AdminOrdersPage} />
+      <Route path="/admin/:rest*" component={AdminPage} />
       
       <Route component={NotFoundPage} />
     </Switch>
