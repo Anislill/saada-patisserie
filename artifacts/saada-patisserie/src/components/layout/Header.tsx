@@ -5,7 +5,8 @@ import { Search, ShoppingBag, Heart, User, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
-import logoPath from "@assets/0_file_00000000873481f494288e53319f68ef-removebg-preview_1785313194757.png";
+import monogramPath from "@assets/file_00000000c4108210b2cf7213fa8a58a6-removebg-preview_1785495978761.png";
+import wordmarkPath from "@assets/file_00000000d8848243a4f96065e941a1fd-removebg-preview_1785495978849.png";
 import CartDrawer from "./CartDrawer";
 import SearchOverlay from "./SearchOverlay";
 
@@ -82,10 +83,8 @@ export default function Header() {
 
           {/* Logo */}
           <Link href="/" className="flex-shrink-0 flex items-center gap-3">
-            <img src={logoPath} alt="Saada Pâtisserie" className="h-12 md:h-16 object-contain" />
-            <span className="hidden sm:block font-serif text-xl md:text-2xl tracking-widest text-foreground select-none">
-              SAADA
-            </span>
+            <img src={monogramPath} alt="Saada monogram" className="h-10 md:h-14 w-auto object-contain" />
+            <img src={wordmarkPath} alt="Saada Pâtisserie" className="hidden sm:block h-7 md:h-9 w-auto object-contain" />
           </Link>
 
           {/* Desktop Nav */}
@@ -148,7 +147,7 @@ export default function Header() {
             className="fixed inset-0 z-[60] bg-background flex flex-col"
           >
             <div className="flex items-center justify-between p-4 border-b border-border">
-              <img src={logoPath} alt="Saada" className="h-8 object-contain" />
+              <img src={monogramPath} alt="Saada" className="h-8 w-auto object-contain" />
               <button onClick={() => setIsMobileMenuOpen(false)} className="p-2">
                 <X size={24} />
               </button>
