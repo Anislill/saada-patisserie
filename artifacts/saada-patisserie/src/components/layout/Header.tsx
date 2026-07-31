@@ -82,9 +82,9 @@ export default function Header() {
           </button>
 
           {/* Logo */}
-          <Link href="/" className="flex-shrink-0 flex items-center gap-2 md:gap-4">
-            <img src={monogramPath} alt="Saada monogram" className="h-11 md:h-20 w-auto object-contain" />
-            <img src={wordmarkPath} alt="Saada Pâtisserie" className="h-6 md:h-12 w-auto object-contain" />
+          <Link href="/" className="flex-shrink-0 flex items-center gap-3 md:gap-4">
+            <img src={monogramPath} alt="Saada monogram" className="h-20 md:h-24 w-auto object-contain" />
+            <img src={wordmarkPath} alt="Saada Pâtisserie" className="h-11 md:h-14 w-auto object-contain" />
           </Link>
 
           {/* Desktop Nav */}
