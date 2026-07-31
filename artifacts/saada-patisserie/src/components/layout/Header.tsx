@@ -5,8 +5,8 @@ import { Search, ShoppingBag, Heart, User, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
-import monogramPath from "@assets/file_00000000c4108210b2cf7213fa8a58a6-removebg-preview_1785495978761.png";
-import wordmarkPath from "@assets/file_00000000d8848243a4f96065e941a1fd-removebg-preview_1785495978849.png";
+import monogramPath from "@assets/file_00000000c4108210b2cf7213fa8a58a6-removebg-preview_1785497038065.png";
+import wordmarkPath from "@assets/file_00000000d8848243a4f96065e941a1fd-removebg-preview_1785497038191.png";
 import CartDrawer from "./CartDrawer";
 import SearchOverlay from "./SearchOverlay";
 
@@ -82,9 +82,9 @@ export default function Header() {
           </button>
 
           {/* Logo */}
-          <Link href="/" className="flex-shrink-0 flex items-center gap-3">
-            <img src={monogramPath} alt="Saada monogram" className="h-10 md:h-14 w-auto object-contain" />
-            <img src={wordmarkPath} alt="Saada Pâtisserie" className="hidden sm:block h-7 md:h-9 w-auto object-contain" />
+          <Link href="/" className="flex-shrink-0 flex items-center gap-4">
+            <img src={monogramPath} alt="Saada monogram" className="h-14 md:h-20 w-auto object-contain" />
+            <img src={wordmarkPath} alt="Saada Pâtisserie" className="hidden sm:block h-9 md:h-12 w-auto object-contain" />
           </Link>
 
           {/* Desktop Nav */}
