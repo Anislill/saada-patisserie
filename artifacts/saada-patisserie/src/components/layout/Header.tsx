@@ -99,12 +99,12 @@ export default function Header() {
               <span
                 style={{
                   fontFamily: "'Cormorant Garamond', serif",
-                  color: '#B8924A',
-                  fontSize: 'clamp(0.55rem, 2vw, 0.75rem)',
-                  fontWeight: 300,
-                  letterSpacing: '0.35em',
+                  color: '#C49A3C',
+                  fontSize: 'clamp(0.7rem, 2.8vw, 0.9rem)',
+                  fontWeight: 500,
+                  letterSpacing: '0.22em',
                   lineHeight: 1,
-                  marginTop: '5px',
+                  marginTop: '6px',
                 }}
               >
                 PÂTISSERIE
