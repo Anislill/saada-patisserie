@@ -25,6 +25,9 @@ import NotFoundPage from '@/pages/NotFoundPage';
 import AdminLoginPage from '@/pages/admin/AdminLoginPage';
 import AdminPage from '@/pages/admin/AdminPage';
 
+// Scroll restoration
+import ScrollToTop from '@/components/ScrollToTop';
+
 // Init i18n
 import '@/lib/i18n';
 
@@ -64,6 +67,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+        <ScrollToTop />
         <Router />
       </WouterRouter>
       <Toaster />
