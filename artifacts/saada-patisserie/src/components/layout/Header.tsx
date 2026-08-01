@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
 import monogramPath from "@assets/file_00000000c4108210b2cf7213fa8a58a6-removebg-preview_1785497038065.png";
-import wordmarkPath from "@assets/file_00000000d8848243a4f96065e941a1fd-removebg-preview_1785497038191.png";
 import CartDrawer from "./CartDrawer";
 import SearchOverlay from "./SearchOverlay";
 
@@ -82,9 +81,35 @@ export default function Header() {
           </button>
 
           {/* Logo */}
-          <Link href="/" className="flex-shrink-0 flex items-center gap-3 md:gap-4">
-            <img src={monogramPath} alt="Saada monogram" className="h-20 md:h-24 w-auto object-contain" />
-            <img src={wordmarkPath} alt="Saada Pâtisserie" className="h-11 md:h-14 w-auto object-contain" />
+          <Link href="/" className="flex-shrink-0 flex items-center gap-2 md:gap-3">
+            <img src={monogramPath} alt="Saada monogram" className="h-[88px] md:h-[108px] w-auto object-contain" />
+            <div className="flex flex-col justify-center leading-none">
+              <span
+                style={{
+                  fontFamily: "'Cormorant Garamond', serif",
+                  color: '#111111',
+                  fontSize: 'clamp(1.35rem, 5vw, 2rem)',
+                  fontWeight: 500,
+                  letterSpacing: '0.25em',
+                  lineHeight: 1,
+                }}
+              >
+                SAADA
+              </span>
+              <span
+                style={{
+                  fontFamily: "'Cormorant Garamond', serif",
+                  color: '#B8924A',
+                  fontSize: 'clamp(0.55rem, 2vw, 0.75rem)',
+                  fontWeight: 300,
+                  letterSpacing: '0.35em',
+                  lineHeight: 1,
+                  marginTop: '5px',
+                }}
+              >
+                PÂTISSERIE
+              </span>
+            </div>
           </Link>
 
           {/* Desktop Nav */}
