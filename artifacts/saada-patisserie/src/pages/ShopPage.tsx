@@ -1,7 +1,8 @@
 import * as React from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
-import { Filter, SlidersHorizontal, X } from "lucide-react";
+import { Filter, SlidersHorizontal, X, Search } from "lucide-react";
+import * as SliderPrimitive from "@radix-ui/react-slider";
 import Layout from "@/components/layout/Layout";
 import { SectionReveal } from "@/components/SectionReveal";
 import { ProductCard } from "@/components/ProductCard";
@@ -9,100 +10,265 @@ import { Button } from "@/components/ui/button";
 import { SEED_PRODUCTS, SEED_CATEGORIES } from "@/lib/firestore";
 import { AnimatePresence, motion } from "framer-motion";
 
+/* ─────────────── helpers ─────────────── */
+const allPrices = SEED_PRODUCTS.map(p => p.discountedPrice ?? p.price);
+const PRICE_MIN = Math.min(...allPrices);
+const PRICE_MAX = Math.max(...allPrices);
+
+function flavorCounts() {
+  const map: Record<string, number> = {};
+  SEED_PRODUCTS.forEach(p => p.flavors?.forEach(f => { map[f] = (map[f] ?? 0) + 1; }));
+  return map;
+}
+function categoryCounts() {
+  const map: Record<string, number> = {};
+  SEED_CATEGORIES.forEach(cat => {
+    map[cat.slug] = SEED_PRODUCTS.filter(p => p.categories.includes(cat.name)).length;
+  });
+  return map;
+}
+
+/* ─────────────── sub-components ─────────────── */
+
+/** Searchable checkbox list (flavors or categories) */
+function SearchableList({
+  title,
+  placeholder,
+  items,
+  counts,
+  selected,
+  onToggle,
+}: {
+  title: string;
+  placeholder: string;
+  items: { label: string; value: string }[];
+  counts: Record<string, number>;
+  selected: string[];
+  onToggle: (v: string) => void;
+}) {
+  const [query, setQuery] = React.useState("");
+  const filtered = items.filter(i => i.label.toLowerCase().includes(query.toLowerCase()));
+
+  return (
+    <div>
+      <h3 className="text-xs font-bold uppercase tracking-[0.15em] mb-4 text-foreground">
+        {title}
+      </h3>
+
+      {/* search input */}
+      <div className="flex items-center border border-border px-3 py-2 mb-3 gap-2">
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder={placeholder}
+          className="flex-1 text-sm bg-transparent outline-none placeholder:text-muted-foreground"
+        />
+        <Search size={14} className="text-muted-foreground shrink-0" />
+      </div>
+
+      {/* scrollable list */}
+      <div className="max-h-52 overflow-y-auto space-y-1 pr-1">
+        {filtered.map(item => {
+          const count = counts[item.value] ?? 0;
+          const active = selected.includes(item.value);
+          return (
+            <button
+              key={item.value}
+              onClick={() => onToggle(item.value)}
+              className={`w-full flex items-center justify-between py-1.5 px-1 text-sm transition-colors rounded-sm
+                ${active ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <span>{item.label}</span>
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full border
+                  ${active
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border"}`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Price range slider */
+function PriceRangeFilter({
+  range,
+  onApply,
+}: {
+  range: [number, number];
+  onApply: (r: [number, number]) => void;
+}) {
+  const [local, setLocal] = React.useState<[number, number]>(range);
+
+  return (
+    <div>
+      <h3 className="text-xs font-bold uppercase tracking-[0.15em] mb-5 text-foreground">
+        Filtrer par prix
+      </h3>
+
+      {/* Radix slider */}
+      <SliderPrimitive.Root
+        className="relative flex items-center select-none touch-none w-full h-5 mb-4"
+        min={PRICE_MIN}
+        max={PRICE_MAX}
+        step={5}
+        value={local}
+        onValueChange={v => setLocal(v as [number, number])}
+      >
+        <SliderPrimitive.Track className="relative bg-border grow rounded-full h-[3px]">
+          <SliderPrimitive.Range className="absolute bg-primary rounded-full h-full" />
+        </SliderPrimitive.Track>
+        {local.map((_, i) => (
+          <SliderPrimitive.Thumb
+            key={i}
+            className="block w-4 h-4 bg-primary rounded-full border-2 border-background shadow
+                       focus:outline-none focus:ring-2 focus:ring-primary cursor-grab active:cursor-grabbing"
+          />
+        ))}
+      </SliderPrimitive.Root>
+
+      {/* price display + apply button */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm text-muted-foreground">
+          Prix&nbsp;: <strong className="text-foreground">{local[0]} د.ت</strong>
+          &nbsp;—&nbsp;
+          <strong className="text-foreground">{local[1]} د.ت</strong>
+        </span>
+        <button
+          onClick={() => onApply(local)}
+          className="text-xs uppercase tracking-widest font-semibold border border-foreground px-3 py-1.5
+                     hover:bg-foreground hover:text-background transition-colors"
+        >
+          Filtrer
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────── main page ─────────────── */
 export default function ShopPage() {
   const { t } = useTranslation();
   const [searchParams] = React.useState(new URLSearchParams(window.location.search));
-  
-  const [activeCategory, setActiveCategory] = React.useState<string | null>(searchParams.get('category'));
+
+  const [activeCategories, setActiveCategories] = React.useState<string[]>(
+    searchParams.get("category") ? [searchParams.get("category")!] : []
+  );
   const [activeFlavors, setActiveFlavors] = React.useState<string[]>([]);
+  const [priceRange, setPriceRange] = React.useState<[number, number]>([PRICE_MIN, PRICE_MAX]);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = React.useState(false);
   const [sortBy, setSortBy] = React.useState("default");
 
-  // Get all unique flavors
-  const allFlavors = React.useMemo(() => {
-    const flavors = new Set<string>();
-    SEED_PRODUCTS.forEach(p => p.flavors?.forEach(f => flavors.add(f)));
-    return Array.from(flavors);
-  }, []);
+  const flavorMap = React.useMemo(flavorCounts, []);
+  const categoryMap = React.useMemo(categoryCounts, []);
 
-  const toggleFlavor = (flavor: string) => {
-    setActiveFlavors(prev => 
-      prev.includes(flavor) ? prev.filter(f => f !== flavor) : [...prev, flavor]
-    );
+  const allFlavors = React.useMemo(
+    () => Object.keys(flavorMap).sort().map(f => ({ label: f, value: f })),
+    [flavorMap]
+  );
+  const allCategories = React.useMemo(
+    () => SEED_CATEGORIES.map(c => ({ label: c.name, value: c.slug })),
+    []
+  );
+
+  const toggleFlavor = (f: string) =>
+    setActiveFlavors(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
+
+  const toggleCategory = (slug: string) =>
+    setActiveCategories(prev => prev.includes(slug) ? prev.filter(x => x !== slug) : [...prev, slug]);
+
+  const resetAll = () => {
+    setActiveCategories([]);
+    setActiveFlavors([]);
+    setPriceRange([PRICE_MIN, PRICE_MAX]);
   };
+
+  const activeCount = activeCategories.length + activeFlavors.length +
+    (priceRange[0] !== PRICE_MIN || priceRange[1] !== PRICE_MAX ? 1 : 0);
 
   const filteredProducts = React.useMemo(() => {
     let result = [...SEED_PRODUCTS];
-    
-    if (activeCategory) {
-      const categoryName = SEED_CATEGORIES.find(c => c.slug === activeCategory)?.name;
-      if (categoryName) {
-        result = result.filter(p => p.categories.includes(categoryName));
-      }
+
+    if (activeCategories.length > 0) {
+      result = result.filter(p =>
+        activeCategories.some(slug => {
+          const name = SEED_CATEGORIES.find(c => c.slug === slug)?.name;
+          return name && p.categories.includes(name);
+        })
+      );
     }
-    
+
     if (activeFlavors.length > 0) {
       result = result.filter(p => p.flavors?.some(f => activeFlavors.includes(f)));
     }
 
-    if (sortBy === "price-asc") {
-      result.sort((a, b) => (a.discountedPrice || a.price) - (b.discountedPrice || b.price));
-    } else if (sortBy === "price-desc") {
-      result.sort((a, b) => (b.discountedPrice || b.price) - (a.discountedPrice || a.price));
-    } else if (sortBy === "bestsellers") {
+    result = result.filter(p => {
+      const effective = p.discountedPrice ?? p.price;
+      return effective >= priceRange[0] && effective <= priceRange[1];
+    });
+
+    if (sortBy === "price-asc")
+      result.sort((a, b) => (a.discountedPrice ?? a.price) - (b.discountedPrice ?? b.price));
+    else if (sortBy === "price-desc")
+      result.sort((a, b) => (b.discountedPrice ?? b.price) - (a.discountedPrice ?? a.price));
+    else if (sortBy === "bestsellers")
       result.sort((a, b) => (b.isBestSeller ? 1 : 0) - (a.isBestSeller ? 1 : 0));
-    }
 
     return result;
-  }, [activeCategory, activeFlavors, sortBy]);
+  }, [activeCategories, activeFlavors, priceRange, sortBy]);
 
+  /* shared sidebar content */
   const FilterSidebar = () => (
-    <div className="space-y-10">
-      <div>
-        <h3 className="font-serif text-xl mb-4">{t('home.categories')}</h3>
-        <ul className="space-y-3">
-          <li>
-            <button 
-              onClick={() => setActiveCategory(null)}
-              className={`text-sm hover:text-secondary transition-colors ${!activeCategory ? 'text-secondary font-medium' : 'text-muted-foreground'}`}
-            >
-              Tous les produits
-            </button>
-          </li>
-          {SEED_CATEGORIES.map(cat => (
-            <li key={cat.id}>
-              <button 
-                onClick={() => setActiveCategory(cat.slug)}
-                className={`text-sm hover:text-secondary transition-colors ${activeCategory === cat.slug ? 'text-secondary font-medium' : 'text-muted-foreground'}`}
-              >
-                {cat.name}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
+    <div className="space-y-8">
+      <PriceRangeFilter range={priceRange} onApply={setPriceRange} />
 
-      <div>
-        <h3 className="font-serif text-xl mb-4">{t('shop.flavors')}</h3>
-        <div className="space-y-3">
-          {allFlavors.map(flavor => (
-            <label key={flavor} className="flex items-center gap-3 cursor-pointer group">
-              <div className={`w-4 h-4 border border-border flex items-center justify-center transition-colors ${activeFlavors.includes(flavor) ? 'bg-secondary border-secondary' : 'group-hover:border-secondary'}`}>
-                {activeFlavors.includes(flavor) && <div className="w-2 h-2 bg-secondary-foreground" />}
-              </div>
-              <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{flavor}</span>
-            </label>
-          ))}
-        </div>
-      </div>
+      <div className="border-t border-border" />
+
+      <SearchableList
+        title="Filtrer par saveur"
+        placeholder="trouver Saveur"
+        items={allFlavors}
+        counts={flavorMap}
+        selected={activeFlavors}
+        onToggle={toggleFlavor}
+      />
+
+      <div className="border-t border-border" />
+
+      <SearchableList
+        title="Filtrer par type de pâtisserie"
+        placeholder="trouver Type de pâtisserie"
+        items={allCategories}
+        counts={categoryMap}
+        selected={activeCategories}
+        onToggle={toggleCategory}
+      />
+
+      {activeCount > 0 && (
+        <>
+          <div className="border-t border-border" />
+          <button
+            onClick={resetAll}
+            className="text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Réinitialiser les filtres
+          </button>
+        </>
+      )}
     </div>
   );
 
   return (
     <Layout>
+      {/* page header */}
       <div className="bg-muted/30 py-8 md:py-16">
         <div className="container mx-auto px-4 md:px-8 text-center">
-          <h1 className="text-4xl md:text-5xl font-serif text-foreground mb-4">{t('shop.title')}</h1>
+          <h1 className="text-4xl md:text-5xl font-serif text-foreground mb-4">{t("shop.title")}</h1>
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground uppercase tracking-widest font-sans">
             <Link href="/" className="hover:text-foreground">Accueil</Link>
             <span>/</span>
@@ -113,31 +279,38 @@ export default function ShopPage() {
 
       <div className="container mx-auto px-4 md:px-8 py-12 md:py-24">
         <div className="flex flex-col lg:flex-row gap-12">
-          
+
           {/* Desktop Sidebar */}
           <aside className="hidden lg:block w-64 flex-shrink-0">
             <FilterSidebar />
           </aside>
 
-          {/* Mobile Filter Toggle & Main Content */}
+          {/* Main content */}
           <div className="flex-1">
+            {/* toolbar */}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 pb-4 border-b border-border">
-              <button 
+              <button
                 onClick={() => setIsMobileFiltersOpen(true)}
                 className="lg:hidden flex items-center gap-2 text-sm font-medium uppercase tracking-widest w-full sm:w-auto justify-center border border-border py-3 px-6"
               >
-                <Filter size={16} /> {t('shop.filters')}
+                <Filter size={16} />
+                {t("shop.filters")}
+                {activeCount > 0 && (
+                  <span className="ml-1 bg-primary text-primary-foreground text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+                    {activeCount}
+                  </span>
+                )}
               </button>
 
               <div className="text-sm text-muted-foreground">
-                {filteredProducts.length} produits trouvés
+                {filteredProducts.length} produit{filteredProducts.length !== 1 ? "s" : ""} trouvé{filteredProducts.length !== 1 ? "s" : ""}
               </div>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                <span className="text-sm text-muted-foreground hidden sm:inline-block">{t('shop.sort')}:</span>
-                <select 
+                <span className="text-sm text-muted-foreground hidden sm:inline-block">{t("shop.sort")} :</span>
+                <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
+                  onChange={e => setSortBy(e.target.value)}
                   className="bg-transparent border border-border py-2 px-4 text-sm focus:outline-none focus:ring-1 focus:ring-secondary w-full sm:w-auto"
                 >
                   <option value="default">Par défaut</option>
@@ -148,12 +321,11 @@ export default function ShopPage() {
               </div>
             </div>
 
+            {/* product grid */}
             {filteredProducts.length === 0 ? (
               <div className="text-center py-24">
-                <h3 className="text-2xl font-serif mb-4">{t('shop.empty')}</h3>
-                <Button onClick={() => { setActiveCategory(null); setActiveFlavors([]); }}>
-                  Réinitialiser les filtres
-                </Button>
+                <h3 className="text-2xl font-serif mb-4">{t("shop.empty")}</h3>
+                <Button onClick={resetAll}>Réinitialiser les filtres</Button>
               </div>
             ) : (
               <div className="grid grid-cols-2 xl:grid-cols-3 gap-3 md:gap-6">
@@ -184,30 +356,39 @@ export default function ShopPage() {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
-              className="fixed top-0 left-0 h-full w-full max-w-[300px] bg-background shadow-2xl z-[70] flex flex-col lg:hidden"
+              className="fixed top-0 left-0 h-full w-full max-w-[320px] bg-background shadow-2xl z-[70] flex flex-col lg:hidden"
             >
-              <div className="flex items-center justify-between p-6 border-b border-border">
-                <h2 className="text-xl font-serif flex items-center gap-2">
-                  <SlidersHorizontal size={20} />
-                  {t('shop.filters')}
+              {/* drawer header */}
+              <div className="flex items-center justify-between p-5 border-b border-border">
+                <h2 className="text-base font-bold uppercase tracking-widest flex items-center gap-2">
+                  <SlidersHorizontal size={16} />
+                  Filtres
+                  {activeCount > 0 && (
+                    <span className="bg-primary text-primary-foreground text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
+                      {activeCount}
+                    </span>
+                  )}
                 </h2>
                 <button onClick={() => setIsMobileFiltersOpen(false)} className="p-2">
                   <X size={20} />
                 </button>
               </div>
+
+              {/* drawer body */}
               <div className="flex-1 overflow-y-auto p-6">
                 <FilterSidebar />
               </div>
-              <div className="p-6 border-t border-border bg-muted/20">
+
+              {/* drawer footer */}
+              <div className="p-5 border-t border-border bg-muted/20">
                 <Button onClick={() => setIsMobileFiltersOpen(false)} className="w-full">
-                  Voir les résultats
+                  Voir {filteredProducts.length} résultat{filteredProducts.length !== 1 ? "s" : ""}
                 </Button>
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
-
     </Layout>
   );
 }
