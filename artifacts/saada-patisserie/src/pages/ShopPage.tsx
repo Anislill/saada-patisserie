@@ -141,8 +141,8 @@ function PriceRangeFilter({
         </span>
         <button
           onClick={() => onApply(local)}
-          className="text-xs uppercase tracking-widest font-semibold border border-foreground px-3 py-1.5
-                     hover:bg-foreground hover:text-background transition-colors"
+          className="text-xs uppercase tracking-[0.18em] font-normal border border-foreground px-4 py-1.5
+                     rounded-full hover:bg-foreground hover:text-background transition-all duration-200 hover:-translate-y-0.5"
         >
           Filtrer
         </button>

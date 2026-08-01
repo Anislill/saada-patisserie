@@ -179,7 +179,7 @@ export function ProductCard({ product }: { product: Product }) {
         {/* Add to Cart */}
         <motion.button
           onClick={handleAddToCart}
-          className={`w-full h-10 flex items-center justify-center gap-2 text-xs uppercase tracking-widest font-medium rounded-sm overflow-hidden relative ${
+          className={`w-full h-10 flex items-center justify-center gap-2 text-xs uppercase tracking-[0.18em] font-normal rounded-full overflow-hidden relative ${
             added
               ? "bg-primary/80 text-primary-foreground"
               : "bg-primary text-primary-foreground"
