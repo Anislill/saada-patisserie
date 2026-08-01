@@ -9,12 +9,73 @@ import monogramPath from "@assets/file_00000000c4108210b2cf7213fa8a58a6-removebg
 import CartDrawer from "./CartDrawer";
 import SearchOverlay from "./SearchOverlay";
 
+/* reusable animated icon button */
+function IconBtn({
+  onClick,
+  label,
+  className = "",
+  children,
+}: {
+  onClick?: () => void;
+  label: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <motion.button
+      onClick={onClick}
+      aria-label={label}
+      className={`relative text-foreground transition-colors ${className}`}
+      whileHover={{ scale: 1.15, y: -1 }}
+      whileTap={{ scale: 0.88 }}
+      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+    >
+      {children}
+    </motion.button>
+  );
+}
+
+/* animated nav link with sliding underline */
+function NavLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link href={href}>
+      <motion.span
+        className={`relative text-sm uppercase tracking-widest cursor-pointer pb-0.5
+          ${active ? "text-secondary font-medium" : "text-foreground"}`}
+        whileHover="hovered"
+        initial="rest"
+        animate="rest"
+      >
+        {children}
+        {/* underline bar */}
+        <motion.span
+          className="absolute bottom-0 left-0 h-px bg-secondary block"
+          variants={{
+            rest:    { scaleX: active ? 1 : 0, originX: 0 },
+            hovered: { scaleX: 1,               originX: 0 },
+          }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          style={{ width: "100%" }}
+        />
+      </motion.span>
+    </Link>
+  );
+}
+
 export default function Header() {
   const { t } = useTranslation();
   const [location] = useLocation();
   const cartCount = useCartStore((state) => state.getItemCount());
   const wishlistCount = useWishlistStore((state) => state.productIds.length);
-  
+
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isCartOpen, setIsCartOpen] = React.useState(false);
@@ -22,18 +83,16 @@ export default function Header() {
   const [showAnnouncement, setShowAnnouncement] = React.useState(true);
 
   React.useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const navLinks = [
-    { href: "/", label: t('nav.home') },
-    { href: "/boutique", label: t('nav.shop') },
-    { href: "/a-propos", label: t('nav.about') },
-    { href: "/contact", label: t('nav.contact') },
+    { href: "/",         label: t("nav.home")  },
+    { href: "/boutique", label: t("nav.shop")  },
+    { href: "/a-propos", label: t("nav.about") },
+    { href: "/contact",  label: t("nav.contact") },
   ];
 
   return (
@@ -43,7 +102,7 @@ export default function Header() {
         {showAnnouncement && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
+            animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             className="bg-primary text-primary-foreground py-2 px-4 text-xs md:text-sm text-center relative overflow-hidden"
           >
@@ -52,12 +111,15 @@ export default function Header() {
                 Livraison gratuite à partir de 100 د.ت d'achats • Découvrez notre nouvelle collection printemps
               </span>
             </div>
-            <button 
+            <motion.button
               onClick={() => setShowAnnouncement(false)}
               className="absolute right-2 top-1/2 -translate-y-1/2 hover:opacity-70 transition-opacity"
+              whileHover={{ scale: 1.2, rotate: 90 }}
+              whileTap={{ scale: 0.85 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
             >
               <X size={16} />
-            </button>
+            </motion.button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -65,32 +127,42 @@ export default function Header() {
       {/* Main Header */}
       <header
         className={`sticky top-0 z-50 w-full transition-all duration-300 ${
-          isScrolled 
-            ? "bg-background/90 backdrop-blur-md border-b border-border shadow-sm py-2" 
+          isScrolled
+            ? "bg-background/90 backdrop-blur-md border-b border-border shadow-sm py-2"
             : "bg-background/80 backdrop-blur-sm py-4"
         }`}
       >
         <div className="container mx-auto px-4 md:px-8 flex items-center justify-between">
-          
+
           {/* Mobile Menu Toggle */}
-          <button 
+          <motion.button
             className="md:hidden p-2 text-foreground"
             onClick={() => setIsMobileMenuOpen(true)}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.88 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            aria-label="Menu"
           >
             <Menu size={24} />
-          </button>
+          </motion.button>
 
           {/* Logo */}
           <Link href="/" className="flex-shrink-0 flex items-center gap-2 md:gap-3">
-            <img src={monogramPath} alt="Saada monogram" className="h-[88px] md:h-[108px] w-auto object-contain" />
+            <motion.img
+              src={monogramPath}
+              alt="Saada monogram"
+              className="h-[88px] md:h-[108px] w-auto object-contain"
+              whileHover={{ scale: 1.04 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            />
             <div className="flex flex-col justify-center leading-none">
               <span
                 style={{
                   fontFamily: "'Cormorant Garamond', serif",
-                  color: '#111111',
-                  fontSize: 'clamp(1.35rem, 5vw, 2rem)',
+                  color: "#111111",
+                  fontSize: "clamp(1.35rem, 5vw, 2rem)",
                   fontWeight: 500,
-                  letterSpacing: '0.25em',
+                  letterSpacing: "0.25em",
                   lineHeight: 1,
                 }}
               >
@@ -99,12 +171,12 @@ export default function Header() {
               <span
                 style={{
                   fontFamily: "'Cormorant Garamond', serif",
-                  color: '#C49A3C',
-                  fontSize: 'clamp(0.7rem, 2.8vw, 0.9rem)',
+                  color: "#C49A3C",
+                  fontSize: "clamp(0.7rem, 2.8vw, 0.9rem)",
                   fontWeight: 500,
-                  letterSpacing: '0.22em',
+                  letterSpacing: "0.22em",
                   lineHeight: 1,
-                  marginTop: '6px',
+                  marginTop: "6px",
                 }}
               >
                 PÂTISSERIE
@@ -115,48 +187,61 @@ export default function Header() {
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => (
-              <Link 
-                key={link.href} 
-                href={link.href}
-                className={`text-sm uppercase tracking-widest hover:text-secondary transition-colors ${
-                  location === link.href ? "text-secondary font-medium" : "text-foreground"
-                }`}
-              >
+              <NavLink key={link.href} href={link.href} active={location === link.href}>
                 {link.label}
-              </Link>
+              </NavLink>
             ))}
           </nav>
 
           {/* Right Icons */}
           <div className="flex items-center gap-4 md:gap-6">
-            <button onClick={() => setIsSearchOpen(true)} className="text-foreground hover:text-secondary transition-colors">
+            <IconBtn onClick={() => setIsSearchOpen(true)} label="Rechercher" className="hover:text-secondary">
               <Search size={20} strokeWidth={1.5} />
-            </button>
-            
-            <Link href="/compte/favoris" className="text-foreground hover:text-secondary transition-colors relative hidden md:block">
-              <Heart size={20} strokeWidth={1.5} />
-              {wishlistCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-secondary text-secondary-foreground text-[10px] w-4 h-4 flex items-center justify-center rounded-full">
-                  {wishlistCount}
-                </span>
-              )}
-            </Link>
+            </IconBtn>
 
-            <Link href="/compte" className="text-foreground hover:text-secondary transition-colors hidden md:block">
-              <User size={20} strokeWidth={1.5} />
-            </Link>
+            <IconBtn label="Favoris" className="hover:text-secondary hidden md:flex">
+              <Link href="/compte/favoris" className="flex items-center">
+                <Heart size={20} strokeWidth={1.5} />
+                <AnimatePresence>
+                  {wishlistCount > 0 && (
+                    <motion.span
+                      key={wishlistCount}
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                      className="absolute -top-2 -right-2 bg-secondary text-secondary-foreground text-[10px] w-4 h-4 flex items-center justify-center rounded-full"
+                    >
+                      {wishlistCount}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </Link>
+            </IconBtn>
 
-            <button 
-              onClick={() => setIsCartOpen(true)}
-              className="text-foreground hover:text-secondary transition-colors relative"
-            >
+            <IconBtn label="Mon compte" className="hover:text-secondary hidden md:flex">
+              <Link href="/compte">
+                <User size={20} strokeWidth={1.5} />
+              </Link>
+            </IconBtn>
+
+            <IconBtn onClick={() => setIsCartOpen(true)} label="Panier" className="hover:text-secondary">
               <ShoppingBag size={20} strokeWidth={1.5} />
-              {cartCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] w-4 h-4 flex items-center justify-center rounded-full">
-                  {cartCount}
-                </span>
-              )}
-            </button>
+              <AnimatePresence>
+                {cartCount > 0 && (
+                  <motion.span
+                    key={cartCount}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: [0, 1.35, 1] }}
+                    exit={{ scale: 0 }}
+                    transition={{ duration: 0.35, ease: "backOut" }}
+                    className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] w-4 h-4 flex items-center justify-center rounded-full"
+                  >
+                    {cartCount}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </IconBtn>
           </div>
         </div>
       </header>
@@ -164,7 +249,7 @@ export default function Header() {
       {/* Mobile Menu Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <motion.div 
+          <motion.div
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
@@ -173,32 +258,55 @@ export default function Header() {
           >
             <div className="flex items-center justify-between p-4 border-b border-border">
               <img src={monogramPath} alt="Saada" className="h-8 w-auto object-contain" />
-              <button onClick={() => setIsMobileMenuOpen(false)} className="p-2">
+              <motion.button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2"
+                whileHover={{ scale: 1.1, rotate: 90 }}
+                whileTap={{ scale: 0.88 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              >
                 <X size={24} />
-              </button>
+              </motion.button>
             </div>
-            
-            <div className="flex-1 overflow-y-auto py-8 px-6 flex flex-col gap-6">
-              {navLinks.map((link) => (
-                <Link 
-                  key={link.href} 
-                  href={link.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="text-2xl font-serif text-foreground"
-                >
-                  {link.label}
-                </Link>
-              ))}
-              
-              <div className="my-4 border-t border-border" />
-              
-              <Link href="/compte" onClick={() => setIsMobileMenuOpen(false)} className="text-lg flex items-center gap-3">
-                <User size={20} /> {t('nav.account')}
-              </Link>
-              <Link href="/compte/favoris" onClick={() => setIsMobileMenuOpen(false)} className="text-lg flex items-center gap-3">
-                <Heart size={20} /> {t('nav.wishlist')} ({wishlistCount})
-              </Link>
 
+            <div className="flex-1 overflow-y-auto py-8 px-6 flex flex-col gap-6">
+              {navLinks.map((link, i) => (
+                <motion.div
+                  key={link.href}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.07, type: "spring", stiffness: 300, damping: 24 }}
+                >
+                  <Link
+                    href={link.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="text-2xl font-serif text-foreground hover:text-secondary transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </motion.div>
+              ))}
+
+              <div className="my-4 border-t border-border" />
+
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: navLinks.length * 0.07, type: "spring", stiffness: 300, damping: 24 }}
+              >
+                <Link href="/compte" onClick={() => setIsMobileMenuOpen(false)} className="text-lg flex items-center gap-3 hover:text-secondary transition-colors">
+                  <User size={20} /> {t("nav.account")}
+                </Link>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: (navLinks.length + 1) * 0.07, type: "spring", stiffness: 300, damping: 24 }}
+              >
+                <Link href="/compte/favoris" onClick={() => setIsMobileMenuOpen(false)} className="text-lg flex items-center gap-3 hover:text-secondary transition-colors">
+                  <Heart size={20} /> {t("nav.wishlist")} ({wishlistCount})
+                </Link>
+              </motion.div>
             </div>
           </motion.div>
         )}

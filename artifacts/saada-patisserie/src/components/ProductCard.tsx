@@ -5,8 +5,10 @@ import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { QuickViewModal } from "@/components/QuickViewModal";
+
+const spring = { type: "spring", stiffness: 420, damping: 18 } as const;
 
 export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCartStore();
@@ -40,14 +42,14 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <>
-      <div className="flex flex-col w-full">
+      <div className="flex flex-col w-full group">
+
         {/* ── Image ─────────────────────────────── */}
         <div className="relative overflow-hidden bg-muted mb-3 rounded-sm">
-          {/* aspect ratio wrapper */}
           <div className="aspect-[4/5]">
             <motion.img
-              whileHover={{ scale: 1.04 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
+              whileHover={{ scale: 1.06 }}
+              transition={{ duration: 0.55, ease: "easeOut" }}
               src={product.images[0]}
               alt={product.name}
               className="w-full h-full object-cover"
@@ -74,27 +76,40 @@ export function ProductCard({ product }: { product: Product }) {
             )}
           </div>
 
-          {/* Wishlist — top right, always visible */}
-          <button
+          {/* Wishlist — top right */}
+          <motion.button
             onClick={handleToggleWishlist}
-            className="absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-background/85 backdrop-blur-sm hover:bg-background transition-colors shadow-sm"
             aria-label="Ajouter aux favoris"
+            className="absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-background/85 backdrop-blur-sm shadow-sm"
+            whileHover={{ scale: 1.2, backgroundColor: "rgba(255,255,255,0.95)" }}
+            whileTap={{ scale: 0.8 }}
+            transition={spring}
           >
-            <Heart
-              size={14}
-              className={isWishlisted ? "fill-secondary text-secondary" : "text-foreground"}
-            />
-          </button>
+            <motion.div
+              animate={isWishlisted ? { scale: [1, 1.4, 1] } : { scale: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Heart
+                size={14}
+                className={`transition-colors duration-200 ${
+                  isWishlisted ? "fill-secondary text-secondary" : "text-foreground"
+                }`}
+              />
+            </motion.div>
+          </motion.button>
 
-          {/* Quick View — bottom right of image, always visible */}
-          <button
+          {/* Quick View — bottom right */}
+          <motion.button
             onClick={() => setIsQuickViewOpen(true)}
-            className="absolute bottom-2 right-2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-background/85 backdrop-blur-sm hover:bg-primary hover:text-primary-foreground transition-colors shadow-sm"
             aria-label="Aperçu rapide"
             title="Aperçu rapide"
+            className="absolute bottom-2 right-2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-background/85 backdrop-blur-sm shadow-sm"
+            whileHover={{ scale: 1.15, backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
+            whileTap={{ scale: 0.85 }}
+            transition={spring}
           >
             <Eye size={14} />
-          </button>
+          </motion.button>
         </div>
 
         {/* ── Info ──────────────────────────────── */}
@@ -124,40 +139,95 @@ export function ProductCard({ product }: { product: Product }) {
             )}
           </div>
 
-          {/* Quantity selector — Fostka style */}
+          {/* Quantity selector */}
           <div className="flex items-center justify-center mb-3">
             <div className="flex items-center border border-border rounded-sm overflow-hidden">
-              <button
+              <motion.button
                 onClick={() => setQty((q) => Math.max(1, q - 1))}
                 className="w-8 h-8 flex items-center justify-center text-foreground hover:bg-muted transition-colors text-base font-medium"
+                whileTap={{ scale: 0.75 }}
+                transition={spring}
               >
                 <Minus size={13} />
-              </button>
-              <span className="w-8 text-center text-sm font-medium select-none border-x border-border h-8 flex items-center justify-center">
-                {qty}
-              </span>
-              <button
+              </motion.button>
+
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={qty}
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 6 }}
+                  transition={{ duration: 0.15 }}
+                  className="w-8 text-center text-sm font-medium select-none border-x border-border h-8 flex items-center justify-center"
+                >
+                  {qty}
+                </motion.span>
+              </AnimatePresence>
+
+              <motion.button
                 onClick={() => setQty((q) => q + 1)}
                 className="w-8 h-8 flex items-center justify-center text-foreground hover:bg-muted transition-colors"
+                whileTap={{ scale: 0.75 }}
+                transition={spring}
               >
                 <Plus size={13} />
-              </button>
+              </motion.button>
             </div>
           </div>
         </div>
 
-        {/* Add to Cart — full width, Fostka style */}
-        <button
+        {/* Add to Cart */}
+        <motion.button
           onClick={handleAddToCart}
-          className={`w-full h-10 flex items-center justify-center gap-2 text-xs uppercase tracking-widest font-medium transition-all duration-300 rounded-sm ${
+          className={`w-full h-10 flex items-center justify-center gap-2 text-xs uppercase tracking-widest font-medium rounded-sm overflow-hidden relative ${
             added
               ? "bg-primary/80 text-primary-foreground"
-              : "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]"
+              : "bg-primary text-primary-foreground"
           }`}
+          whileHover={!added ? { y: -2, boxShadow: "0 6px 20px rgba(0,0,0,0.18)" } : {}}
+          whileTap={{ scale: 0.97 }}
+          transition={{ type: "spring", stiffness: 380, damping: 20 }}
         >
-          <ShoppingBag size={14} className="flex-shrink-0" />
-          {added ? "Ajouté ✓" : "Ajouter au panier"}
-        </button>
+          {/* shimmer sweep on hover */}
+          <motion.span
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full"
+            whileHover={{ translateX: "200%" }}
+            transition={{ duration: 0.55, ease: "easeInOut" }}
+          />
+
+          <AnimatePresence mode="wait">
+            {added ? (
+              <motion.span
+                key="added"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center gap-2"
+              >
+                <motion.span
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                >
+                  ✓
+                </motion.span>
+                Ajouté
+              </motion.span>
+            ) : (
+              <motion.span
+                key="idle"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="flex items-center gap-2"
+              >
+                <ShoppingBag size={14} className="flex-shrink-0" />
+                Ajouter au panier
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </motion.button>
       </div>
 
       {/* Quick View Modal */}
