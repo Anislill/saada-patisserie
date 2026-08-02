@@ -39,6 +39,7 @@ export interface Product {
   isBestSeller?: boolean;
   isAvailable: boolean;
   pricingUnit?: PricingUnit;
+  video?: string;
   variants?: { size?: string[]; flavor?: string[] };
 }
 

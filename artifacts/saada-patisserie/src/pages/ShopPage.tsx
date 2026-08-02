@@ -8,6 +8,7 @@ import { SectionReveal } from "@/components/SectionReveal";
 import { ProductCard } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { SEED_PRODUCTS, SEED_CATEGORIES } from "@/lib/firestore";
+import { useProductStore } from "@/store/productStore";
 import { AnimatePresence, motion } from "framer-motion";
 
 /* ─────────────── helpers ─────────────── */
@@ -164,6 +165,11 @@ export default function ShopPage() {
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = React.useState(false);
   const [sortBy, setSortBy] = React.useState("default");
 
+  const _allProducts = useProductStore((s) => s.products);
+  const storeProducts = React.useMemo(
+    () => _allProducts.filter((p) => p.isAvailable),
+    [_allProducts]
+  );
   const flavorMap = React.useMemo(flavorCounts, []);
   const categoryMap = React.useMemo(categoryCounts, []);
 
@@ -192,7 +198,7 @@ export default function ShopPage() {
     (priceRange[0] !== PRICE_MIN || priceRange[1] !== PRICE_MAX ? 1 : 0);
 
   const filteredProducts = React.useMemo(() => {
-    let result = [...SEED_PRODUCTS];
+    let result = [...storeProducts];
 
     if (activeCategories.length > 0) {
       result = result.filter(p =>

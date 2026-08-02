@@ -200,7 +200,7 @@ export function ProductCard({ product }: { product: Product }) {
         >
           {/* shimmer sweep on hover */}
           <motion.span
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full"
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full pointer-events-none"
             whileHover={{ translateX: "200%" }}
             transition={{ duration: 0.55, ease: "easeInOut" }}
           />

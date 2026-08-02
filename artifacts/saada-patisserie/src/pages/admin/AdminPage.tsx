@@ -1,7 +1,8 @@
 import * as React from "react";
 import { useLocation } from "wouter";
 import { useAuthStore } from "@/store/authStore";
-import { SEED_PRODUCTS, SEED_CATEGORIES, Product, PricingUnit } from "@/lib/firestore";
+import { SEED_CATEGORIES, Product, PricingUnit } from "@/lib/firestore";
+import { useProductStore } from "@/store/productStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -79,16 +80,44 @@ function DashboardTab() {
   );
 }
 
+/* ── Image helpers ── */
+async function compressImage(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      const MAX = 900;
+      const r = Math.min(1, MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * r);
+      canvas.height = Math.round(img.height * r);
+      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(objectUrl);
+      resolve(canvas.toDataURL("image/jpeg", 0.78));
+    };
+    img.src = objectUrl;
+  });
+}
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 /* ─────────────────── PRODUCTS TAB ─────────────────── */
 function ProductsTab() {
-  const [products, setProducts] = React.useState<Product[]>(SEED_PRODUCTS);
+  const { products, addProduct, updateProduct, deleteProduct, toggleAvailability } = useProductStore();
   const [editing, setEditing] = React.useState<Product | null>(null);
   const [showForm, setShowForm] = React.useState(false);
-  const [form, setForm] = React.useState<Partial<Product>>({ isAvailable: true, categories: [], flavors: [], images: [] });
+  const [form, setForm] = React.useState<Partial<Product>>({ isAvailable: true, categories: [], flavors: [], images: [], pricingUnit: 'piece' });
+  const [uploading, setUploading] = React.useState(false);
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ isAvailable: true, categories: [], flavors: [], images: [] });
+    setForm({ isAvailable: true, categories: [], flavors: [], images: [], pricingUnit: 'piece' });
     setShowForm(true);
   };
   const openEdit = (p: Product) => {
@@ -96,31 +125,55 @@ function ProductsTab() {
     setForm({ ...p });
     setShowForm(true);
   };
-  const deleteProduct = (id: string) => {
-    if (confirm("Supprimer ce produit ?")) setProducts(prev => prev.filter(p => p.id !== id));
+
+  const handleImagesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setUploading(true);
+    const compressed = await Promise.all(files.map(compressImage));
+    setForm(f => ({ ...f, images: [...(f.images ?? []), ...compressed] }));
+    setUploading(false);
+    e.target.value = "";
   };
-  const toggleAvail = (id: string) => {
-    setProducts(prev => prev.map(p => p.id === id ? { ...p, isAvailable: !p.isAvailable } : p));
+
+  const removeImage = (idx: number) =>
+    setForm(f => ({ ...f, images: (f.images ?? []).filter((_, i) => i !== idx) }));
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 30 * 1024 * 1024) {
+      alert("La vidéo doit faire moins de 30 Mo.");
+      return;
+    }
+    setUploading(true);
+    const b64 = await fileToBase64(file);
+    setForm(f => ({ ...f, video: b64 }));
+    setUploading(false);
+    e.target.value = "";
   };
+
   const saveProduct = () => {
     if (!form.name || !form.price) return;
-    if (editing) {
-      setProducts(prev => prev.map(p => p.id === editing.id ? { ...p, ...form } as Product : p));
-    } else {
-      const newP: Product = {
-        id: `p${Date.now()}`,
-        slug: (form.name ?? "").toLowerCase().replace(/\s+/g, "-"),
-        name: form.name ?? "",
-        price: Number(form.price) ?? 0,
-        description: form.description ?? "",
-        shortDescription: form.shortDescription ?? "",
-        categories: form.categories ?? [],
-        flavors: form.flavors ?? [],
-        images: form.images ?? [],
-        isAvailable: form.isAvailable ?? true,
-      };
-      setProducts(prev => [...prev, newP]);
-    }
+    const saved: Product = {
+      id: editing?.id ?? `p${Date.now()}`,
+      slug: editing?.slug ?? (form.name ?? "").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""),
+      name: form.name ?? "",
+      price: Number(form.price),
+      discountedPrice: form.discountedPrice ? Number(form.discountedPrice) : undefined,
+      description: form.description ?? "",
+      shortDescription: form.shortDescription ?? "",
+      categories: form.categories ?? [],
+      flavors: form.flavors ?? [],
+      images: form.images ?? [],
+      isAvailable: form.isAvailable ?? true,
+      isBestSeller: form.isBestSeller ?? false,
+      isFeatured: form.isFeatured ?? false,
+      pricingUnit: form.pricingUnit,
+      video: form.video,
+    };
+    if (editing) updateProduct(saved);
+    else addProduct(saved);
     setShowForm(false);
   };
 
@@ -168,7 +221,7 @@ function ProductsTab() {
                     )}
                   </td>
                   <td className="px-5 py-3">
-                    <button onClick={() => toggleAvail(product.id)}
+                    <button onClick={() => toggleAvailability(product.id)}
                       className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-sm border transition-colors ${product.isAvailable ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}`}>
                       {product.isAvailable ? <Eye size={11} /> : <EyeOff size={11} />}
                       {product.isAvailable ? 'En ligne' : 'Masqué'}
@@ -177,7 +230,7 @@ function ProductsTab() {
                   <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => openEdit(product)} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm transition-colors" title="Modifier"><Edit2 size={15} /></button>
-                      <button onClick={() => deleteProduct(product.id)} className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-red-50 rounded-sm transition-colors" title="Supprimer"><Trash2 size={15} /></button>
+                      <button onClick={() => { if (confirm("Supprimer ce produit ?")) deleteProduct(product.id); }} className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-red-50 rounded-sm transition-colors" title="Supprimer"><Trash2 size={15} /></button>
                     </div>
                   </td>
                 </tr>
@@ -195,49 +248,58 @@ function ProductsTab() {
               <h3 className="font-serif text-xl">{editing ? "Modifier le produit" : "Nouveau produit"}</h3>
               <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-5">
+
+              {/* Name */}
               <div>
                 <label className="text-sm font-medium block mb-1.5">Nom du produit *</label>
-                <Input value={form.name ?? ""} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: Coffret Signature" />
+                <Input value={form.name ?? ""} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
               </div>
+
+              {/* Prices */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium block mb-1.5">Prix (د.ت) *</label>
-                  <Input type="number" value={form.price ?? ""} onChange={e => setForm(f => ({ ...f, price: Number(e.target.value) }))} placeholder="85" />
+                  <Input type="number" min="0" value={form.price ?? ""} onChange={e => setForm(f => ({ ...f, price: Number(e.target.value) }))} />
                 </div>
                 <div>
                   <label className="text-sm font-medium block mb-1.5">Prix promo (د.ت)</label>
-                  <Input type="number" value={form.discountedPrice ?? ""} onChange={e => setForm(f => ({ ...f, discountedPrice: e.target.value ? Number(e.target.value) : undefined }))} placeholder="70" />
+                  <Input type="number" min="0" value={form.discountedPrice ?? ""} onChange={e => setForm(f => ({ ...f, discountedPrice: e.target.value ? Number(e.target.value) : undefined }))} />
                 </div>
               </div>
+
+              {/* Pricing unit */}
               <div>
                 <label className="text-sm font-medium block mb-1.5">Unité de vente</label>
                 <div className="grid grid-cols-3 gap-2">
                   {([
-                    { value: 'piece', label: 'À la pièce', sub: 'ex: 85 د.ت / pièce' },
-                    { value: '100g',  label: 'Par 100g',   sub: 'ex: 3.5 د.ت / 100g'  },
-                    { value: 'kg',    label: 'Au kg',       sub: 'ex: 25 د.ت / kg'    },
-                  ] as { value: PricingUnit; label: string; sub: string }[]).map(opt => (
+                    { value: 'piece', label: 'À la pièce' },
+                    { value: '100g',  label: 'Par 100g'   },
+                    { value: 'kg',    label: 'Au kg'      },
+                  ] as { value: PricingUnit; label: string }[]).map(opt => (
                     <button
                       key={opt.value}
                       type="button"
                       onClick={() => setForm(f => ({ ...f, pricingUnit: opt.value }))}
-                      className={`flex flex-col items-start p-3 border rounded-sm text-left transition-colors ${
+                      className={`p-3 border rounded-sm text-sm font-medium text-center transition-colors ${
                         (form.pricingUnit ?? 'piece') === opt.value
                           ? 'border-secondary bg-secondary/5 text-secondary'
-                          : 'border-border hover:border-secondary/50'
+                          : 'border-border hover:border-secondary/50 text-foreground'
                       }`}
                     >
-                      <span className="text-sm font-medium">{opt.label}</span>
-                      <span className="text-[10px] text-muted-foreground mt-0.5">{opt.sub}</span>
+                      {opt.label}
                     </button>
                   ))}
                 </div>
               </div>
+
+              {/* Short desc */}
               <div>
                 <label className="text-sm font-medium block mb-1.5">Description courte</label>
-                <Input value={form.shortDescription ?? ""} onChange={e => setForm(f => ({ ...f, shortDescription: e.target.value }))} placeholder="Une ligne d'accroche" />
+                <Input value={form.shortDescription ?? ""} onChange={e => setForm(f => ({ ...f, shortDescription: e.target.value }))} />
               </div>
+
+              {/* Full desc */}
               <div>
                 <label className="text-sm font-medium block mb-1.5">Description complète</label>
                 <textarea
@@ -245,35 +307,101 @@ function ProductsTab() {
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                   rows={3}
                   className="w-full border border-input bg-background rounded-sm px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
-                  placeholder="Description détaillée du produit..."
                 />
               </div>
+
+              {/* Categories */}
               <div>
-                <label className="text-sm font-medium block mb-1.5">Catégories (séparées par des virgules)</label>
+                <label className="text-sm font-medium block mb-1.5">Catégories <span className="text-muted-foreground font-normal">(séparées par des virgules)</span></label>
                 <Input
                   value={(form.categories ?? []).join(", ")}
                   onChange={e => setForm(f => ({ ...f, categories: e.target.value.split(",").map(s => s.trim()).filter(Boolean) }))}
-                  placeholder="Coffrets Gourmands, bestsellers"
                 />
               </div>
+
+              {/* Flavors */}
               <div>
-                <label className="text-sm font-medium block mb-1.5">Saveurs (séparées par des virgules)</label>
+                <label className="text-sm font-medium block mb-1.5">Saveurs <span className="text-muted-foreground font-normal">(séparées par des virgules)</span></label>
                 <Input
                   value={(form.flavors ?? []).join(", ")}
                   onChange={e => setForm(f => ({ ...f, flavors: e.target.value.split(",").map(s => s.trim()).filter(Boolean) }))}
-                  placeholder="Amande, Pistache, Rose"
                 />
               </div>
-              <div className="flex items-center gap-3">
-                <input type="checkbox" id="avail" checked={form.isAvailable ?? true}
-                  onChange={e => setForm(f => ({ ...f, isAvailable: e.target.checked }))}
-                  className="w-4 h-4 accent-secondary" />
-                <label htmlFor="avail" className="text-sm font-medium cursor-pointer">Produit visible sur la boutique</label>
+
+              {/* ── Images upload ── */}
+              <div>
+                <label className="text-sm font-medium block mb-2">Photos du produit</label>
+                <label className={`flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-sm py-4 cursor-pointer hover:border-secondary/60 transition-colors text-sm text-muted-foreground ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <Image size={16} />
+                  {uploading ? "Compression en cours…" : "Cliquer pour ajouter des photos"}
+                  <input type="file" accept="image/*" multiple className="hidden" onChange={handleImagesUpload} disabled={uploading} />
+                </label>
+                {(form.images ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {(form.images ?? []).map((src, i) => (
+                      <div key={i} className="relative group w-20 h-20 rounded-sm overflow-hidden border border-border bg-muted">
+                        <img src={src} alt="" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(i)}
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {/* ── Video upload ── */}
+              <div>
+                <label className="text-sm font-medium block mb-2">Vidéo courte <span className="text-muted-foreground font-normal text-xs">(max 30 Mo)</span></label>
+                <label className={`flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-sm py-4 cursor-pointer hover:border-secondary/60 transition-colors text-sm text-muted-foreground ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <ShoppingBag size={16} />
+                  {uploading ? "Chargement…" : form.video ? "Remplacer la vidéo" : "Cliquer pour ajouter une vidéo"}
+                  <input type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} disabled={uploading} />
+                </label>
+                {form.video && (
+                  <div className="mt-3 relative rounded-sm overflow-hidden border border-border bg-muted">
+                    <video src={form.video} controls className="w-full max-h-40 object-contain" />
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, video: undefined }))}
+                      className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 hover:bg-black/80 transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Checkboxes */}
+              <div className="space-y-3 pt-1">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.isAvailable ?? true}
+                    onChange={e => setForm(f => ({ ...f, isAvailable: e.target.checked }))}
+                    className="w-4 h-4 accent-secondary" />
+                  <span className="text-sm font-medium">Produit visible sur la boutique</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.isBestSeller ?? false}
+                    onChange={e => setForm(f => ({ ...f, isBestSeller: e.target.checked }))}
+                    className="w-4 h-4 accent-secondary" />
+                  <span className="text-sm font-medium">Meilleure vente</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.isFeatured ?? false}
+                    onChange={e => setForm(f => ({ ...f, isFeatured: e.target.checked }))}
+                    className="w-4 h-4 accent-secondary" />
+                  <span className="text-sm font-medium">Mis en avant (homepage)</span>
+                </label>
+              </div>
+
             </div>
             <div className="p-6 border-t border-border flex gap-3 justify-end">
               <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-sm">Annuler</Button>
-              <Button onClick={saveProduct} className="bg-secondary text-white hover:bg-secondary/90 rounded-sm">
+              <Button onClick={saveProduct} disabled={uploading} className="bg-secondary text-white hover:bg-secondary/90 rounded-sm">
                 {editing ? "Enregistrer" : "Ajouter"}
               </Button>
             </div>
