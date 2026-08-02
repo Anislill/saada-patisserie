@@ -7,27 +7,9 @@ import Layout from "@/components/layout/Layout";
 import { SectionReveal } from "@/components/SectionReveal";
 import { ProductCard } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
-import { SEED_PRODUCTS, SEED_CATEGORIES } from "@/lib/firestore";
+import { SEED_CATEGORIES } from "@/lib/firestore";
 import { useProductStore } from "@/store/productStore";
 import { AnimatePresence, motion } from "framer-motion";
-
-/* ─────────────── helpers ─────────────── */
-const allPrices = SEED_PRODUCTS.map(p => p.discountedPrice ?? p.price);
-const PRICE_MIN = Math.min(...allPrices);
-const PRICE_MAX = Math.max(...allPrices);
-
-function flavorCounts() {
-  const map: Record<string, number> = {};
-  SEED_PRODUCTS.forEach(p => p.flavors?.forEach(f => { map[f] = (map[f] ?? 0) + 1; }));
-  return map;
-}
-function categoryCounts() {
-  const map: Record<string, number> = {};
-  SEED_CATEGORIES.forEach(cat => {
-    map[cat.slug] = SEED_PRODUCTS.filter(p => p.categories.includes(cat.name)).length;
-  });
-  return map;
-}
 
 /* ─────────────── sub-components ─────────────── */
 
@@ -99,9 +81,13 @@ function SearchableList({
 /** Price range slider */
 function PriceRangeFilter({
   range,
+  min,
+  max,
   onApply,
 }: {
   range: [number, number];
+  min: number;
+  max: number;
   onApply: (r: [number, number]) => void;
 }) {
   const [local, setLocal] = React.useState<[number, number]>(range);
@@ -115,8 +101,8 @@ function PriceRangeFilter({
       {/* Radix slider */}
       <SliderPrimitive.Root
         className="relative flex items-center select-none touch-none w-full h-5 mb-4"
-        min={PRICE_MIN}
-        max={PRICE_MAX}
+        min={min}
+        max={max}
         step={5}
         value={local}
         onValueChange={v => setLocal(v as [number, number])}
@@ -157,21 +143,42 @@ export default function ShopPage() {
   const { t } = useTranslation();
   const [searchParams] = React.useState(new URLSearchParams(window.location.search));
 
+  const allStoreProducts = useProductStore((s) => s.products);
+
+  const [priceMin, priceMax] = React.useMemo(() => {
+    const prices = allStoreProducts.map(p => p.discountedPrice ?? p.price);
+    if (!prices.length) return [0, 1000];
+    return [Math.min(...prices), Math.max(...prices)];
+  }, [allStoreProducts]);
+
   const [activeCategories, setActiveCategories] = React.useState<string[]>(
     searchParams.get("category") ? [searchParams.get("category")!] : []
   );
   const [activeFlavors, setActiveFlavors] = React.useState<string[]>([]);
-  const [priceRange, setPriceRange] = React.useState<[number, number]>([PRICE_MIN, PRICE_MAX]);
+  const [priceRange, setPriceRange] = React.useState<[number, number]>(() => {
+    const prices = allStoreProducts.map(p => p.discountedPrice ?? p.price);
+    if (!prices.length) return [0, 1000];
+    return [Math.min(...prices), Math.max(...prices)];
+  });
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = React.useState(false);
   const [sortBy, setSortBy] = React.useState("default");
 
-  const _allProducts = useProductStore((s) => s.products);
   const storeProducts = React.useMemo(
-    () => _allProducts.filter((p) => p.isAvailable),
-    [_allProducts]
+    () => allStoreProducts.filter((p) => p.isAvailable),
+    [allStoreProducts]
   );
-  const flavorMap = React.useMemo(flavorCounts, []);
-  const categoryMap = React.useMemo(categoryCounts, []);
+  const flavorMap = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    allStoreProducts.forEach(p => p.flavors?.forEach(f => { map[f] = (map[f] ?? 0) + 1; }));
+    return map;
+  }, [allStoreProducts]);
+  const categoryMap = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    SEED_CATEGORIES.forEach(cat => {
+      map[cat.slug] = allStoreProducts.filter(p => p.categories.includes(cat.name)).length;
+    });
+    return map;
+  }, [allStoreProducts]);
 
   const allFlavors = React.useMemo(
     () => Object.keys(flavorMap).sort().map(f => ({ label: f, value: f })),
@@ -191,11 +198,11 @@ export default function ShopPage() {
   const resetAll = () => {
     setActiveCategories([]);
     setActiveFlavors([]);
-    setPriceRange([PRICE_MIN, PRICE_MAX]);
+    setPriceRange([priceMin, priceMax]);
   };
 
   const activeCount = activeCategories.length + activeFlavors.length +
-    (priceRange[0] !== PRICE_MIN || priceRange[1] !== PRICE_MAX ? 1 : 0);
+    (priceRange[0] !== priceMin || priceRange[1] !== priceMax ? 1 : 0);
 
   const filteredProducts = React.useMemo(() => {
     let result = [...storeProducts];
@@ -231,7 +238,7 @@ export default function ShopPage() {
   /* shared sidebar content */
   const FilterSidebar = () => (
     <div className="space-y-8">
-      <PriceRangeFilter range={priceRange} onApply={setPriceRange} />
+      <PriceRangeFilter range={priceRange} min={priceMin} max={priceMax} onApply={setPriceRange} />
 
       <div className="border-t border-border" />
 

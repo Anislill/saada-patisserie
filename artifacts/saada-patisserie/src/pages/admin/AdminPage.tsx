@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useLocation } from "wouter";
 import { useAuthStore } from "@/store/authStore";
-import { SEED_CATEGORIES, SEED_PRODUCTS, Product, PricingUnit } from "@/lib/firestore";
+import { SEED_CATEGORIES, Product, PricingUnit } from "@/lib/firestore";
 import { useProductStore } from "@/store/productStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +55,7 @@ function StatCard({ label, value, sub, icon: Icon, color = "text-secondary" }: {
 
 /* ─────────────────── DASHBOARD TAB ─────────────────── */
 function DashboardTab() {
+  const products = useProductStore((s) => s.products);
   return (
     <div>
       <h2 className="text-2xl font-serif mb-6">Tableau de Bord</h2>
@@ -63,7 +64,7 @@ function DashboardTab() {
         <StatCard label="Chiffre d'Affaires" value="0 €" sub="Ce mois" icon={Tag} />
         <StatCard label="Commandes" value="0" sub="Ce mois" icon={ShoppingBag} />
         <StatCard label="Nouveaux Clients" value="0" sub="Ce mois" icon={Users} />
-        <StatCard label="Produits Actifs" value={SEED_PRODUCTS.filter(p => p.isAvailable).length.toString()} icon={PackageSearch} />
+        <StatCard label="Produits Actifs" value={products.filter(p => p.isAvailable).length.toString()} icon={PackageSearch} />
       </div>
       {/* recent orders */}
       <div className="bg-background border border-border rounded-sm overflow-hidden">

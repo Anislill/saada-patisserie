@@ -1,10 +1,11 @@
 import * as React from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { SEED_PRODUCTS } from "@/lib/firestore";
+import { useProductStore } from "@/store/productStore";
 import { Button } from "@/components/ui/button";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 
 export default function AdminProductsPage() {
+  const products = useProductStore((s) => s.products);
   return (
     <AdminLayout>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
@@ -27,7 +28,7 @@ export default function AdminProductsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {SEED_PRODUCTS.map((product) => (
+              {products.map((product) => (
                 <tr key={product.id} className="hover:bg-muted/20 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">

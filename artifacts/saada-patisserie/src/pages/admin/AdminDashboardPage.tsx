@@ -1,14 +1,15 @@
 import * as React from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { ArrowUpRight, ShoppingBag, Users, Euro, Package } from "lucide-react";
-import { SEED_PRODUCTS } from "@/lib/firestore";
+import { useProductStore } from "@/store/productStore";
 
 export default function AdminDashboardPage() {
+  const products = useProductStore((s) => s.products);
   const stats = [
     { label: "Chiffre d'Affaires", value: "14 250 €", icon: Euro, trend: "+12%" },
     { label: "Commandes (Mois)", value: "156", icon: ShoppingBag, trend: "+5%" },
     { label: "Nouveaux Clients", value: "48", icon: Users, trend: "+18%" },
-    { label: "Produits Actifs", value: SEED_PRODUCTS.length.toString(), icon: Package, trend: "0%" },
+    { label: "Produits Actifs", value: products.filter(p => p.isAvailable).length.toString(), icon: Package, trend: "0%" },
   ];
 
   return (

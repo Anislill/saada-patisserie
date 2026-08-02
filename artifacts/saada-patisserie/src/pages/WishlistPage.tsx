@@ -4,11 +4,12 @@ import { AccountLayout } from "@/components/layout/AccountLayout";
 import { ProductCard } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { useWishlistStore } from "@/store/wishlistStore";
-import { SEED_PRODUCTS } from "@/lib/firestore";
+import { useProductStore } from "@/store/productStore";
 
 export default function WishlistPage() {
   const { productIds } = useWishlistStore();
-  const wishlistedProducts = SEED_PRODUCTS.filter(p => productIds.includes(p.id));
+  const products = useProductStore((s) => s.products);
+  const wishlistedProducts = products.filter(p => productIds.includes(p.id));
 
   return (
     <AccountLayout activeTab="favoris">

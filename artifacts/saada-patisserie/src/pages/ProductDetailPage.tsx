@@ -7,9 +7,9 @@ import { SectionReveal } from "@/components/SectionReveal";
 import { ProductCard } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SEED_PRODUCTS } from "@/lib/firestore";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
+import { useProductStore } from "@/store/productStore";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 
@@ -21,7 +21,8 @@ export default function ProductDetailPage() {
   const { toggleItem, hasItem } = useWishlistStore();
   const { toast } = useToast();
 
-  const product = SEED_PRODUCTS.find(p => p.slug === slug);
+  const products = useProductStore((s) => s.products);
+  const product = products.find(p => p.slug === slug);
   
   const [quantity, setQuantity] = React.useState(1);
   const [activeImage, setActiveImage] = React.useState(0);
@@ -55,7 +56,7 @@ export default function ProductDetailPage() {
   }
 
   const isWishlisted = hasItem(product.id);
-  const relatedProducts = SEED_PRODUCTS.filter(p => 
+  const relatedProducts = products.filter(p => 
     p.id !== product.id && p.categories.some(c => product.categories.includes(c))
   ).slice(0, 4);
 

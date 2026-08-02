@@ -4,7 +4,7 @@ import { Link, useLocation } from "wouter";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useTranslation } from "react-i18next";
-import { SEED_PRODUCTS } from "@/lib/firestore";
+import { useProductStore } from "@/store/productStore";
 
 interface SearchOverlayProps {
   isOpen: boolean;
@@ -15,15 +15,16 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
   const { t } = useTranslation();
   const [query, setQuery] = React.useState("");
   const [, setLocation] = useLocation();
+  const products = useProductStore((s) => s.products);
 
   const results = React.useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
-    return SEED_PRODUCTS.filter(p => 
+    return products.filter(p => 
       p.name.toLowerCase().includes(q) || 
       p.shortDescription.toLowerCase().includes(q)
     ).slice(0, 5);
-  }, [query]);
+  }, [query, products]);
 
   const handleResultClick = (slug: string) => {
     onClose();
