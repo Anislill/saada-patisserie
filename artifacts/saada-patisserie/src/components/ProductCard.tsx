@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Eye, Heart, Minus, Plus, ShoppingBag } from "lucide-react";
-import { Product } from "@/lib/firestore";
+import { Product, getPriceUnitLabel, getQtyDisplay } from "@/lib/firestore";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
 import { Badge } from "@/components/ui/badge";
@@ -122,7 +122,7 @@ export function ProductCard({ product }: { product: Product }) {
           </p>
 
           {/* Price */}
-          <div className="flex items-baseline justify-center gap-2 mb-3">
+          <div className="flex items-baseline justify-center gap-2 mb-3 flex-wrap">
             {product.discountedPrice ? (
               <>
                 <span className="text-muted-foreground line-through text-xs">
@@ -130,11 +130,21 @@ export function ProductCard({ product }: { product: Product }) {
                 </span>
                 <span className="text-secondary font-bold text-base">
                   {product.discountedPrice} د.ت
+                  {getPriceUnitLabel(product.pricingUnit) && (
+                    <span className="text-xs font-normal text-muted-foreground ml-1">
+                      {getPriceUnitLabel(product.pricingUnit)}
+                    </span>
+                  )}
                 </span>
               </>
             ) : (
               <span className="text-secondary font-bold text-base">
                 {product.price} د.ت
+                {getPriceUnitLabel(product.pricingUnit) && (
+                  <span className="text-xs font-normal text-muted-foreground ml-1">
+                    {getPriceUnitLabel(product.pricingUnit)}
+                  </span>
+                )}
               </span>
             )}
           </div>
@@ -158,9 +168,9 @@ export function ProductCard({ product }: { product: Product }) {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 6 }}
                   transition={{ duration: 0.15 }}
-                  className="w-8 text-center text-sm font-medium select-none border-x border-border h-8 flex items-center justify-center"
+                  className="min-w-[36px] px-1 text-center text-sm font-medium select-none border-x border-border h-8 flex items-center justify-center"
                 >
-                  {qty}
+                  {getQtyDisplay(qty, product.pricingUnit)}
                 </motion.span>
               </AnimatePresence>
 
@@ -179,7 +189,7 @@ export function ProductCard({ product }: { product: Product }) {
         {/* Add to Cart */}
         <motion.button
           onClick={handleAddToCart}
-          className={`w-full h-10 flex items-center justify-center gap-2 text-xs uppercase tracking-[0.18em] font-normal rounded-full overflow-hidden relative ${
+          className={`w-full h-9 flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-[0.1em] font-light rounded-full overflow-hidden relative ${
             added
               ? "bg-primary/80 text-primary-foreground"
               : "bg-primary text-primary-foreground"

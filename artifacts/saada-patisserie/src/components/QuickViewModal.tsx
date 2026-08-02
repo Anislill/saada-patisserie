@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Minus, Plus, ShoppingBag, X } from "lucide-react";
-import { Product } from "@/lib/firestore";
+import { Product, getPriceUnitLabel } from "@/lib/firestore";
 import { useCartStore } from "@/store/cartStore";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -144,6 +144,11 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
                 <div className="flex items-baseline gap-3 mb-5">
                   <span className="font-serif text-2xl text-foreground font-medium">
                     {price} <span className="text-base">د.ت</span>
+                    {getPriceUnitLabel(product.pricingUnit) && (
+                      <span className="text-sm font-normal text-muted-foreground ml-1">
+                        {getPriceUnitLabel(product.pricingUnit)}
+                      </span>
+                    )}
                   </span>
                   {product.discountedPrice && (
                     <span className="text-muted-foreground line-through text-sm">

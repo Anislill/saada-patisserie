@@ -7,6 +7,23 @@ import productRose from "@assets/generated_images/product-rose.jpg";
 import productAnniversaire from "@assets/generated_images/product-anniversaire.jpg";
 import productMignardises from "@assets/generated_images/product-mignardises.jpg";
 
+/** How the price is charged — set per-product in the admin */
+export type PricingUnit = 'piece' | '100g' | 'kg';
+
+/** Price label next to the amount: "" (piece), "/ 100g", "/ kg" */
+export function getPriceUnitLabel(unit?: PricingUnit): string {
+  if (unit === '100g') return '/ 100g';
+  if (unit === 'kg') return '/ kg';
+  return '';
+}
+
+/** What to show in the qty counter: "1" → "1" (piece) | "100g" | "1 kg" */
+export function getQtyDisplay(qty: number, unit?: PricingUnit): string {
+  if (unit === '100g') return `${qty * 100} g`;
+  if (unit === 'kg') return `${qty} kg`;
+  return `${qty}`;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -21,6 +38,7 @@ export interface Product {
   isFeatured?: boolean;
   isBestSeller?: boolean;
   isAvailable: boolean;
+  pricingUnit?: PricingUnit;
   variants?: { size?: string[]; flavor?: string[] };
 }
 

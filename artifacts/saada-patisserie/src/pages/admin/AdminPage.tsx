@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useLocation } from "wouter";
 import { useAuthStore } from "@/store/authStore";
-import { SEED_PRODUCTS, SEED_CATEGORIES, Product } from "@/lib/firestore";
+import { SEED_PRODUCTS, SEED_CATEGORIES, Product, PricingUnit } from "@/lib/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -161,7 +161,12 @@ function ProductsTab() {
                   <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">
                     {product.categories.filter(c => !["bestsellers","featured"].includes(c))[0] ?? "—"}
                   </td>
-                  <td className="px-5 py-3 font-medium">{product.price} €</td>
+                  <td className="px-5 py-3 font-medium">
+                    {product.price} د.ت
+                    {product.pricingUnit && product.pricingUnit !== 'piece' && (
+                      <span className="text-xs text-muted-foreground ml-1">/ {product.pricingUnit}</span>
+                    )}
+                  </td>
                   <td className="px-5 py-3">
                     <button onClick={() => toggleAvail(product.id)}
                       className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-sm border transition-colors ${product.isAvailable ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}`}>
@@ -197,12 +202,36 @@ function ProductsTab() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium block mb-1.5">Prix (€) *</label>
+                  <label className="text-sm font-medium block mb-1.5">Prix (د.ت) *</label>
                   <Input type="number" value={form.price ?? ""} onChange={e => setForm(f => ({ ...f, price: Number(e.target.value) }))} placeholder="85" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium block mb-1.5">Prix promo (€)</label>
+                  <label className="text-sm font-medium block mb-1.5">Prix promo (د.ت)</label>
                   <Input type="number" value={form.discountedPrice ?? ""} onChange={e => setForm(f => ({ ...f, discountedPrice: e.target.value ? Number(e.target.value) : undefined }))} placeholder="70" />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Unité de vente</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { value: 'piece', label: 'À la pièce', sub: 'ex: 85 د.ت / pièce' },
+                    { value: '100g',  label: 'Par 100g',   sub: 'ex: 3.5 د.ت / 100g'  },
+                    { value: 'kg',    label: 'Au kg',       sub: 'ex: 25 د.ت / kg'    },
+                  ] as { value: PricingUnit; label: string; sub: string }[]).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, pricingUnit: opt.value }))}
+                      className={`flex flex-col items-start p-3 border rounded-sm text-left transition-colors ${
+                        (form.pricingUnit ?? 'piece') === opt.value
+                          ? 'border-secondary bg-secondary/5 text-secondary'
+                          : 'border-border hover:border-secondary/50'
+                      }`}
+                    >
+                      <span className="text-sm font-medium">{opt.label}</span>
+                      <span className="text-[10px] text-muted-foreground mt-0.5">{opt.sub}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
               <div>
