@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useLocation } from "wouter";
 import { useAuthStore } from "@/store/authStore";
-import { SEED_CATEGORIES, Product, PricingUnit } from "@/lib/firestore";
+import { SEED_CATEGORIES, SEED_PRODUCTS, Product, PricingUnit } from "@/lib/firestore";
 import { useProductStore } from "@/store/productStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
