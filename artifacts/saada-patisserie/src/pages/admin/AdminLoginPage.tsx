@@ -1,22 +1,36 @@
 import * as React from "react";
 import { useLocation } from "wouter";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuthStore } from "@/store/authStore";
 import { useToast } from "@/hooks/use-toast";
 import logoPath from "@assets/0_file_00000000873481f494288e53319f68ef-removebg-preview_1785313194757.png";
 
 export default function AdminLoginPage() {
   const [, setLocation] = useLocation();
-  const { setUser, setIsAdmin } = useAuthStore();
   const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setUser({ uid: "admin-123", email: "admin@saada.com", displayName: "Admin Saada" } as any);
-    setIsAdmin(true);
-    toast({ title: "Connexion réussie", description: "Bienvenue dans le panneau d'administration." });
-    setLocation("/admin/dashboard");
+    setLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged in AdminLayout will handle the redirect
+      setLocation("/admin/dashboard");
+    } catch {
+      toast({
+        title: "Échec de connexion",
+        description: "Email ou mot de passe incorrect.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -24,17 +38,33 @@ export default function AdminLoginPage() {
       <div className="bg-background border border-border p-8 rounded-sm shadow-sm max-w-md w-full text-center">
         <img src={logoPath} alt="Saada Admin" className="h-16 mx-auto mb-8" />
         <h1 className="text-2xl font-serif mb-6 text-foreground">Accès Réservé</h1>
-        
+
         <form onSubmit={handleLogin} className="space-y-4 text-left">
           <div>
             <label className="text-sm font-medium">Email administrateur</label>
-            <Input type="email" required placeholder="admin@saada-patisserie.com" />
+            <Input
+              type="email"
+              required
+              placeholder="admin@saada-patisserie.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+            />
           </div>
           <div>
             <label className="text-sm font-medium">Mot de passe</label>
-            <Input type="password" required placeholder="••••••••" />
+            <Input
+              type="password"
+              required
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
+            />
           </div>
-          <Button type="submit" className="w-full mt-4">Connexion</Button>
+          <Button type="submit" className="w-full mt-4" disabled={loading}>
+            {loading ? "Connexion…" : "Connexion"}
+          </Button>
         </form>
       </div>
     </div>
