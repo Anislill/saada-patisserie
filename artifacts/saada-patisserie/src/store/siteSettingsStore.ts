@@ -26,9 +26,11 @@ export const useSiteSettingsStore = create<SiteSettingsState>((set, get) => ({
     set({ isSaving: true });
     try {
       await saveSettingsToFirestore(get().settings);
-    } finally {
+    } catch (err) {
       set({ isSaving: false });
+      throw err;
     }
+    set({ isSaving: false });
   },
 }));
 

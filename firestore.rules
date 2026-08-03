@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Products: public read, authenticated write (admin)
+    match /products/{id} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Settings: public read (storefront needs it), authenticated write
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Coupons: authenticated only (admin reads/writes, checkout validation)
+    match /coupons/{id} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Orders: anyone can create (guest checkout), authenticated can read/update
+    match /orders/{id} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
+
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

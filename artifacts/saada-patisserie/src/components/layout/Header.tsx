@@ -5,6 +5,7 @@ import { Search, ShoppingBag, Heart, User, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCartStore } from "@/store/cartStore";
 import { useWishlistStore } from "@/store/wishlistStore";
+import { useSiteSettingsStore } from "@/store/siteSettingsStore";
 import monogramPath from "@assets/file_00000000c4108210b2cf7213fa8a58a6-removebg-preview_1785497038065.png";
 import CartDrawer from "./CartDrawer";
 import SearchOverlay from "./SearchOverlay";
@@ -76,11 +77,15 @@ export default function Header() {
   const cartCount = useCartStore((state) => state.getItemCount());
   const wishlistCount = useWishlistStore((state) => state.productIds.length);
 
+  const announcementText = useSiteSettingsStore((s) => s.settings.announcementBar);
+  const announcementActive = useSiteSettingsStore((s) => s.settings.announcementActive);
+
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [isCartOpen, setIsCartOpen] = React.useState(false);
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
-  const [showAnnouncement, setShowAnnouncement] = React.useState(true);
+  const [userDismissed, setUserDismissed] = React.useState(false);
+  const showAnnouncement = announcementActive && !userDismissed && !!announcementText;
 
   React.useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -108,11 +113,11 @@ export default function Header() {
           >
             <div className="whitespace-nowrap overflow-hidden">
               <span className="inline-block animate-[marquee_15s_linear_infinite]">
-                Livraison gratuite à partir de 100 د.ت d'achats • Découvrez notre nouvelle collection printemps
+                {announcementText}
               </span>
             </div>
             <motion.button
-              onClick={() => setShowAnnouncement(false)}
+              onClick={() => setUserDismissed(true)}
               className="absolute right-2 top-1/2 -translate-y-1/2 hover:opacity-70 transition-opacity"
               whileHover={{ scale: 1.2, rotate: 90 }}
               whileTap={{ scale: 0.85 }}

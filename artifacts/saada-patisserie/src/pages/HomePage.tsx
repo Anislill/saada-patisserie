@@ -24,7 +24,7 @@ const CATEGORY_STYLES = [
 export default function HomePage() {
   const { t } = useTranslation();
   const [emblaRef] = useEmblaCarousel({ loop: true, align: "center" });
-  const { heroImageUrl } = useSiteSettingsStore();
+  const heroImageUrl = useSiteSettingsStore((s) => s.settings.heroImageUrl);
   const heroImage = heroImageUrl || hero1;
 
   return (

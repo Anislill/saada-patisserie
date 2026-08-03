@@ -479,17 +479,30 @@ function PromotionsTab() {
   const [showForm, setShowForm] = React.useState(false);
   const [form, setForm] = React.useState<Partial<Coupon>>({ active: true, discount: 10, minOrder: 0 });
 
+  const [couponSaving, setCouponSaving] = React.useState(false);
+  const [couponError, setCouponError] = React.useState<string | null>(null);
+
   const saveCoupon = async () => {
     if (!form.code || !form.discount) return;
-    await addCoupon({
-      code: (form.code ?? "").toUpperCase(),
-      discount: Number(form.discount),
-      minOrder: Number(form.minOrder ?? 0),
-      expiry: form.expiry ?? "",
-      active: form.active ?? true,
-    });
-    setForm({ active: true, discount: 10, minOrder: 0 });
-    setShowForm(false);
+    setCouponSaving(true);
+    setCouponError(null);
+    try {
+      await addCoupon({
+        code: (form.code ?? "").toUpperCase(),
+        discount: Number(form.discount),
+        minOrder: Number(form.minOrder ?? 0),
+        expiry: form.expiry ?? "",
+        active: form.active ?? true,
+      });
+      setForm({ active: true, discount: 10, minOrder: 0 });
+      setShowForm(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erreur inconnue";
+      setCouponError(`Erreur: ${msg}`);
+      console.error("saveCoupon error:", err);
+    } finally {
+      setCouponSaving(false);
+    }
   };
 
   return (
@@ -577,9 +590,14 @@ function PromotionsTab() {
                 <label htmlFor="couponActive" className="text-sm font-medium cursor-pointer">Activer immédiatement</label>
               </div>
             </div>
+            {couponError && (
+              <p className="px-6 pb-2 text-sm text-destructive">{couponError}</p>
+            )}
             <div className="p-6 border-t border-border flex gap-3 justify-end">
-              <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-sm">Annuler</Button>
-              <Button onClick={saveCoupon} className="bg-secondary text-white hover:bg-secondary/90 rounded-sm">Créer</Button>
+              <Button variant="outline" onClick={() => setShowForm(false)} disabled={couponSaving} className="rounded-sm">Annuler</Button>
+              <Button onClick={saveCoupon} disabled={couponSaving} className="bg-secondary text-white hover:bg-secondary/90 rounded-sm">
+                {couponSaving ? "Sauvegarde…" : "Créer"}
+              </Button>
             </div>
           </div>
         </div>
@@ -590,23 +608,45 @@ function PromotionsTab() {
 
 /* ─────────────────── CONTENU TAB ─────────────────── */
 function ContenuTab() {
-  const { heroImageUrl, setHeroImageUrl } = useSiteSettingsStore();
-  const [inputUrl, setInputUrl] = React.useState(heroImageUrl);
+  const { settings, updateSettings, saveSettings } = useSiteSettingsStore();
+  const [inputUrl, setInputUrl] = React.useState(settings.heroImageUrl ?? "");
   const [saved, setSaved] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
   const [previewError, setPreviewError] = React.useState(false);
 
-  const save = () => {
-    setHeroImageUrl(inputUrl.trim());
-    setSaved(true);
-    setPreviewError(false);
-    setTimeout(() => setSaved(false), 2500);
+  const save = async () => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      updateSettings({ heroImageUrl: inputUrl.trim() });
+      await saveSettings();
+      setSaved(true);
+      setPreviewError(false);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setSaveError("Erreur de sauvegarde. Vérifiez les règles Firebase.");
+      console.error("ContenuTab save error:", err);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const reset = () => {
+  const reset = async () => {
     setInputUrl("");
-    setHeroImageUrl("");
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setSaving(true);
+    setSaveError(null);
+    try {
+      updateSettings({ heroImageUrl: "" });
+      await saveSettings();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setSaveError("Erreur de sauvegarde. Vérifiez les règles Firebase.");
+      console.error("ContenuTab reset error:", err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -638,11 +678,15 @@ function ContenuTab() {
             />
             <Button
               onClick={save}
+              disabled={saving}
               className="bg-secondary text-white hover:bg-secondary/90 rounded-sm shrink-0"
             >
-              {saved ? "✓ Enregistré" : "Appliquer"}
+              {saving ? "Sauvegarde…" : saved ? "✓ Enregistré" : "Appliquer"}
             </Button>
           </div>
+          {saveError && (
+            <p className="text-sm text-destructive mt-2">{saveError}</p>
+          )}
           {inputUrl && (
             <Button
               variant="ghost"
@@ -656,7 +700,7 @@ function ContenuTab() {
         </div>
 
         {/* Preview */}
-        {(inputUrl || heroImageUrl) && (
+        {(inputUrl || settings.heroImageUrl) && (
           <div>
             <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2 font-sans">Aperçu</p>
             {previewError ? (
@@ -666,7 +710,7 @@ function ContenuTab() {
             ) : (
               <div className="relative w-full aspect-[16/7] overflow-hidden rounded-sm border border-border">
                 <img
-                  src={inputUrl || heroImageUrl}
+                  src={inputUrl || settings.heroImageUrl}
                   alt="Aperçu héro"
                   className="w-full h-full object-cover"
                   onError={() => setPreviewError(true)}
@@ -680,7 +724,7 @@ function ContenuTab() {
           </div>
         )}
 
-        {!inputUrl && !heroImageUrl && (
+        {!inputUrl && !settings.heroImageUrl && (
           <div className="w-full h-32 bg-muted/30 border border-dashed border-border rounded-sm flex items-center justify-center text-sm text-muted-foreground">
             Image par défaut active — collez une URL pour la remplacer
           </div>
@@ -694,11 +738,19 @@ function ContenuTab() {
 function SettingsTab() {
   const { settings, isLoading, isSaving, updateSettings, saveSettings } = useSiteSettingsStore();
   const [savedFeedback, setSavedFeedback] = React.useState(false);
+  const [saveError, setSaveError] = React.useState<string | null>(null);
 
   const save = async () => {
-    await saveSettings();
-    setSavedFeedback(true);
-    setTimeout(() => setSavedFeedback(false), 2500);
+    setSaveError(null);
+    try {
+      await saveSettings();
+      setSavedFeedback(true);
+      setTimeout(() => setSavedFeedback(false), 2500);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erreur inconnue";
+      setSaveError(`Erreur de sauvegarde : ${msg}`);
+      console.error("SettingsTab save error:", err);
+    }
   };
 
   type SettingsKey = keyof typeof settings;
@@ -719,10 +771,16 @@ function SettingsTab() {
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
         <h2 className="text-2xl font-serif">Paramètres du magasin</h2>
-        <Button onClick={save} className="bg-secondary text-white hover:bg-secondary/90 rounded-sm">
+        <Button onClick={save} disabled={isSaving} className="bg-secondary text-white hover:bg-secondary/90 rounded-sm">
           {isSaving ? "Enregistrement…" : savedFeedback ? "✓ Enregistré" : "Enregistrer"}
         </Button>
       </div>
+      {saveError && (
+        <div className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-sm mb-6 text-sm">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <span>{saveError}</span>
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* Informations */}
