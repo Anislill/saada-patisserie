@@ -22,10 +22,22 @@ export default function AdminLoginPage() {
       await signInWithEmailAndPassword(auth, email, password);
       // onAuthStateChanged in AdminLayout will handle the redirect
       setLocation("/admin/dashboard");
-    } catch {
+    } catch (err: any) {
+      console.error("[AdminLogin] Firebase error:", err?.code, err?.message);
+      const code: string = err?.code ?? "";
+      let description = "Email ou mot de passe incorrect.";
+      if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
+        description = "Email ou mot de passe incorrect.";
+      } else if (code === "auth/too-many-requests") {
+        description = "Trop de tentatives. Réessayez plus tard.";
+      } else if (code === "auth/unauthorized-domain") {
+        description = `Domaine non autorisé dans Firebase. Ajoutez ce domaine dans Firebase Console → Authentication → Settings → Authorized domains : ${window.location.hostname}`;
+      } else if (err?.message) {
+        description = err.message;
+      }
       toast({
         title: "Échec de connexion",
-        description: "Email ou mot de passe incorrect.",
+        description,
         variant: "destructive",
       });
     } finally {
