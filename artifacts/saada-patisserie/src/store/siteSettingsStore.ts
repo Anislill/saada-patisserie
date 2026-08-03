@@ -1,26 +1,41 @@
 import { create } from 'zustand';
-import { SiteSettings, subscribeToSettings, saveSettingsToFirestore } from '@/lib/firestore';
+import {
+  SiteSettings,
+  DEFAULT_SETTINGS,
+  subscribeToSettings,
+  saveSettingsToFirestore,
+} from '@/lib/firestore';
 
 interface SiteSettingsState {
-  heroImageUrl: string;
+  settings: Required<SiteSettings>;
   isLoading: boolean;
-  setHeroImageUrl: (url: string) => Promise<void>;
+  isSaving: boolean;
+  updateSettings: (patch: Partial<SiteSettings>) => void;
+  saveSettings: () => Promise<void>;
 }
 
-export const useSiteSettingsStore = create<SiteSettingsState>((set) => ({
-  heroImageUrl: '',
+export const useSiteSettingsStore = create<SiteSettingsState>((set, get) => ({
+  settings: { ...DEFAULT_SETTINGS },
   isLoading: true,
+  isSaving: false,
 
-  setHeroImageUrl: async (url) => {
-    set({ heroImageUrl: url });
-    await saveSettingsToFirestore({ heroImageUrl: url });
+  updateSettings: (patch) =>
+    set((s) => ({ settings: { ...s.settings, ...patch } })),
+
+  saveSettings: async () => {
+    set({ isSaving: true });
+    try {
+      await saveSettingsToFirestore(get().settings);
+    } finally {
+      set({ isSaving: false });
+    }
   },
 }));
 
-// ── Subscribe to Firestore settings in real-time ──
-subscribeToSettings((settings: SiteSettings) => {
-  useSiteSettingsStore.setState({
-    heroImageUrl: settings.heroImageUrl ?? '',
+// ── Real-time Firestore subscription ──
+subscribeToSettings((remote) => {
+  useSiteSettingsStore.setState((s) => ({
+    settings: { ...s.settings, ...remote },
     isLoading: false,
-  });
+  }));
 });

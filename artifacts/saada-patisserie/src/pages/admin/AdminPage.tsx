@@ -2,10 +2,11 @@ import * as React from "react";
 import { useLocation } from "wouter";
 import { useAuthStore } from "@/store/authStore";
 import {
-  SEED_CATEGORIES, Product, PricingUnit,
+  SEED_CATEGORIES, Product, PricingUnit, Coupon,
   uploadBase64ToStorage, uploadFileToStorage,
 } from "@/lib/firestore";
 import { useProductStore } from "@/store/productStore";
+import { usePromoStore } from "@/store/promoStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,10 +21,6 @@ import { useSiteSettingsStore } from "@/store/siteSettingsStore";
 /* ─────────────────────────── types ─────────────────────────── */
 type Tab = "dashboard" | "produits" | "commandes" | "clients" | "promotions" | "contenu" | "parametres";
 
-interface Coupon {
-  id: string; code: string; discount: number; minOrder: number;
-  expiry: string; active: boolean;
-}
 
 /* ─────────────────────── empty-state banner ─────────────────── */
 function FirebaseBanner() {
@@ -478,25 +475,22 @@ function ClientsTab() {
 
 /* ─────────────────── PROMOTIONS TAB ─────────────────── */
 function PromotionsTab() {
-  const [coupons, setCoupons] = React.useState<Coupon[]>([]);
+  const { coupons, addCoupon, deleteCoupon, toggleCoupon } = usePromoStore();
   const [showForm, setShowForm] = React.useState(false);
   const [form, setForm] = React.useState<Partial<Coupon>>({ active: true, discount: 10, minOrder: 0 });
 
-  const saveCoupon = () => {
+  const saveCoupon = async () => {
     if (!form.code || !form.discount) return;
-    setCoupons(prev => [...prev, {
-      id: `c${Date.now()}`,
+    await addCoupon({
       code: (form.code ?? "").toUpperCase(),
       discount: Number(form.discount),
       minOrder: Number(form.minOrder ?? 0),
       expiry: form.expiry ?? "",
       active: form.active ?? true,
-    }]);
+    });
     setForm({ active: true, discount: 10, minOrder: 0 });
     setShowForm(false);
   };
-  const deleteCoupon = (id: string) => setCoupons(prev => prev.filter(c => c.id !== id));
-  const toggleCoupon = (id: string) => setCoupons(prev => prev.map(c => c.id === id ? { ...c, active: !c.active } : c));
 
   return (
     <div>
@@ -531,10 +525,10 @@ function PromotionsTab() {
                 <tr key={c.id} className="hover:bg-muted/20">
                   <td className="px-5 py-3 font-mono font-bold text-secondary">{c.code}</td>
                   <td className="px-5 py-3">{c.discount}%</td>
-                  <td className="px-5 py-3 hidden sm:table-cell">{c.minOrder > 0 ? `${c.minOrder} €` : "—"}</td>
+                  <td className="px-5 py-3 hidden sm:table-cell">{c.minOrder > 0 ? `${c.minOrder} د.ت` : "—"}</td>
                   <td className="px-5 py-3 hidden md:table-cell text-muted-foreground">{c.expiry || "—"}</td>
                   <td className="px-5 py-3">
-                    <button onClick={() => toggleCoupon(c.id)}
+                    <button onClick={() => toggleCoupon(c.id, !c.active)}
                       className={`px-2 py-1 text-xs rounded-sm border ${c.active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-muted text-muted-foreground border-border'}`}>
                       {c.active ? "Actif" : "Inactif"}
                     </button>
@@ -698,36 +692,25 @@ function ContenuTab() {
 
 /* ─────────────────── SETTINGS TAB ─────────────────── */
 function SettingsTab() {
-  const [saved, setSaved] = React.useState(false);
-  const [settings, setSettings] = React.useState({
-    storeName: "Saada Pâtisserie",
-    email: "contact@saada-patisserie.com",
-    phone: "",
-    address: "",
-    city: "",
-    deliveryFee: "5",
-    freeDeliveryFrom: "100",
-    currency: "EUR",
-    instagram: "",
-    facebook: "",
-    whatsapp: "",
-    announcementBar: "Livraison gratuite à partir de 100€ d'achats · Découvrez notre nouvelle collection printemps",
-    announcementActive: true,
-  });
+  const { settings, isLoading, isSaving, updateSettings, saveSettings } = useSiteSettingsStore();
+  const [savedFeedback, setSavedFeedback] = React.useState(false);
 
-  const save = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  const save = async () => {
+    await saveSettings();
+    setSavedFeedback(true);
+    setTimeout(() => setSavedFeedback(false), 2500);
   };
 
-  const field = (label: string, key: keyof typeof settings, type = "text", placeholder = "") => (
+  type SettingsKey = keyof typeof settings;
+  const field = (label: string, key: SettingsKey, type = "text", placeholder = "") => (
     <div>
       <label className="text-sm font-medium block mb-1.5">{label}</label>
       <Input
         type={type}
         value={settings[key] as string}
-        onChange={e => setSettings(s => ({ ...s, [key]: e.target.value }))}
+        onChange={e => updateSettings({ [key]: e.target.value })}
         placeholder={placeholder}
+        disabled={isLoading}
       />
     </div>
   );
@@ -737,7 +720,7 @@ function SettingsTab() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
         <h2 className="text-2xl font-serif">Paramètres du magasin</h2>
         <Button onClick={save} className="bg-secondary text-white hover:bg-secondary/90 rounded-sm">
-          {saved ? "✓ Enregistré" : "Enregistrer"}
+          {isSaving ? "Enregistrement…" : savedFeedback ? "✓ Enregistré" : "Enregistrer"}
         </Button>
       </div>
 
@@ -755,7 +738,7 @@ function SettingsTab() {
               <label className="text-sm font-medium block mb-1.5">Devise</label>
               <select
                 value={settings.currency}
-                onChange={e => setSettings(s => ({ ...s, currency: e.target.value }))}
+                onChange={e => updateSettings({ currency: e.target.value })}
                 className="w-full border border-input bg-background rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 <option value="EUR">EUR — Euro (€)</option>
@@ -782,14 +765,14 @@ function SettingsTab() {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <input type="checkbox" id="annActive" checked={settings.announcementActive}
-                onChange={e => setSettings(s => ({ ...s, announcementActive: e.target.checked }))}
+                onChange={e => updateSettings({ announcementActive: e.target.checked })}
                 className="w-4 h-4 accent-secondary" />
               <label htmlFor="annActive" className="text-sm font-medium cursor-pointer">Afficher la barre d'annonce</label>
             </div>
             <div>
               <label className="text-sm font-medium block mb-1.5">Texte de l'annonce</label>
               <Input value={settings.announcementBar}
-                onChange={e => setSettings(s => ({ ...s, announcementBar: e.target.value }))}
+                onChange={e => updateSettings({ announcementBar: e.target.value })}
                 placeholder="Livraison gratuite à partir de 100€..." />
             </div>
           </div>

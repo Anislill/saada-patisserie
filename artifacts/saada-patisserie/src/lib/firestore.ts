@@ -221,7 +221,37 @@ export async function deleteProductFromFirestore(id: string): Promise<void> {
 
 export interface SiteSettings {
   heroImageUrl?: string;
+  storeName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  deliveryFee?: string;
+  freeDeliveryFrom?: string;
+  currency?: string;
+  instagram?: string;
+  facebook?: string;
+  whatsapp?: string;
+  announcementBar?: string;
+  announcementActive?: boolean;
 }
+
+export const DEFAULT_SETTINGS: Required<SiteSettings> = {
+  heroImageUrl: '',
+  storeName: 'Saada Pâtisserie',
+  email: 'contact@saada-patisserie.com',
+  phone: '',
+  address: '',
+  city: '',
+  deliveryFee: '5',
+  freeDeliveryFrom: '100',
+  currency: 'TND',
+  instagram: '',
+  facebook: '',
+  whatsapp: '',
+  announcementBar: 'Livraison gratuite à partir de 100 د.ت d\'achats · Découvrez notre nouvelle collection',
+  announcementActive: true,
+};
 
 export function subscribeToSettings(
   callback: (settings: SiteSettings) => void
@@ -233,6 +263,43 @@ export function subscribeToSettings(
 
 export async function saveSettingsToFirestore(settings: Partial<SiteSettings>): Promise<void> {
   await setDoc(doc(db, 'settings', 'main'), settings, { merge: true });
+}
+
+// ─────────────────── Coupons ────────────────────────────
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discount: number;
+  minOrder: number;
+  expiry: string;
+  active: boolean;
+}
+
+export function subscribeToCoupons(
+  callback: (coupons: Coupon[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  return onSnapshot(
+    collection(db, 'coupons'),
+    (snap) => {
+      callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Coupon)));
+    },
+    (err) => onError?.(err as Error)
+  );
+}
+
+export async function saveCouponToFirestore(coupon: Coupon): Promise<void> {
+  const { id, ...data } = coupon;
+  await setDoc(doc(db, 'coupons', id), data);
+}
+
+export async function deleteCouponFromFirestore(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'coupons', id));
+}
+
+export async function toggleCouponInFirestore(id: string, active: boolean): Promise<void> {
+  await setDoc(doc(db, 'coupons', id), { active }, { merge: true });
 }
 
 // ─────────────────── Seeding ────────────────────────────
