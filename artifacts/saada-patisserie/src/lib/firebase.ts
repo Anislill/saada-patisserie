@@ -3,13 +3,20 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
+/** Strip surrounding quotes and trailing commas that appear when secrets
+ *  are copy-pasted directly from a Firebase config object literal. */
+function clean(value: string | undefined): string {
+  if (!value) return '';
+  return value.trim().replace(/^["']|["'],?$/g, '').trim();
+}
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey:            clean(import.meta.env.VITE_FIREBASE_API_KEY),
+  authDomain:        clean(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN),
+  projectId:         clean(import.meta.env.VITE_FIREBASE_PROJECT_ID),
+  storageBucket:     clean(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
+  messagingSenderId: clean(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
+  appId:             clean(import.meta.env.VITE_FIREBASE_APP_ID),
 };
 
 export const app = initializeApp(firebaseConfig);
