@@ -4,42 +4,48 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
 import logoPath from "@assets/0_file_00000000873481f494288e53319f68ef-removebg-preview_1785313194757.png";
 
 export default function AdminLoginPage() {
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setLoading(true);
+
+    console.log("[AdminLogin] attempting sign-in for:", email);
+
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      // onAuthStateChanged in AdminLayout will handle the redirect
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      console.log("[AdminLogin] success, uid:", cred.user.uid);
       setLocation("/admin/dashboard");
     } catch (err: any) {
-      console.error("[AdminLogin] Firebase error:", err?.code, err?.message);
+      console.error("[AdminLogin] error code:", err?.code, "| message:", err?.message);
+
       const code: string = err?.code ?? "";
-      let description = "Email ou mot de passe incorrect.";
-      if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
-        description = "Email ou mot de passe incorrect.";
+      if (
+        code === "auth/invalid-credential" ||
+        code === "auth/wrong-password" ||
+        code === "auth/user-not-found"
+      ) {
+        setError("البريد الإلكتروني أو كلمة المرور غير صحيحة.");
       } else if (code === "auth/too-many-requests") {
-        description = "Trop de tentatives. Réessayez plus tard.";
+        setError("محاولات كثيرة جداً. يرجى المحاولة لاحقاً.");
       } else if (code === "auth/unauthorized-domain") {
-        description = `Domaine non autorisé dans Firebase. Ajoutez ce domaine dans Firebase Console → Authentication → Settings → Authorized domains : ${window.location.hostname}`;
-      } else if (err?.message) {
-        description = err.message;
+        setError(
+          `النطاق غير مُصرَّح به في Firebase. أضف هذا النطاق في Firebase Console → Authentication → Settings → Authorized domains: ${window.location.hostname}`
+        );
+      } else if (code === "auth/network-request-failed") {
+        setError("خطأ في الشبكة. تحقق من الاتصال بالإنترنت.");
+      } else {
+        setError(err?.message ?? "حدث خطأ غير متوقع.");
       }
-      toast({
-        title: "Échec de connexion",
-        description,
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
@@ -51,6 +57,12 @@ export default function AdminLoginPage() {
         <img src={logoPath} alt="Saada Admin" className="h-16 mx-auto mb-8" />
         <h1 className="text-2xl font-serif mb-6 text-foreground">Accès Réservé</h1>
 
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm text-right">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleLogin} className="space-y-4 text-left">
           <div>
             <label className="text-sm font-medium">Email administrateur</label>
@@ -61,6 +73,7 @@ export default function AdminLoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
+              autoComplete="email"
             />
           </div>
           <div>
@@ -72,10 +85,11 @@ export default function AdminLoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
+              autoComplete="current-password"
             />
           </div>
           <Button type="submit" className="w-full mt-4" disabled={loading}>
-            {loading ? "Connexion…" : "Connexion"}
+            {loading ? "Connexion en cours…" : "Connexion"}
           </Button>
         </form>
       </div>
