@@ -1,3 +1,12 @@
+import {
+  collection, doc, setDoc, deleteDoc, onSnapshot,
+  getDocs, getDoc, query,
+} from 'firebase/firestore';
+import {
+  ref as storageRef, uploadString, uploadBytes, getDownloadURL,
+} from 'firebase/storage';
+import { db, storage } from './firebase';
+
 import productArabesque from "@assets/generated_images/product-arabesque.jpg";
 import productSignature from "@assets/generated_images/product-signature.jpg";
 import productPistache from "@assets/generated_images/product-pistache.jpg";
@@ -162,10 +171,98 @@ export const SEED_TESTIMONIALS = [
   { id: "t4", name: "Jean-Paul V.", rating: 4, text: "Très belle découverte. Un service client réactif et des produits de très haute qualité." }
 ];
 
-// Mock API layer for when Firebase isn't available
-export const firestoreMock = {
-  getProducts: async () => SEED_PRODUCTS,
-  getProductBySlug: async (slug: string) => SEED_PRODUCTS.find(p => p.slug === slug),
-  getCategories: async () => SEED_CATEGORIES,
-  getTestimonials: async () => SEED_TESTIMONIALS,
-};
+// ─────────────────── Storage helpers ───────────────────
+
+/** Upload a base64 data-URL to Firebase Storage, return download URL */
+export async function uploadBase64ToStorage(base64: string, path: string): Promise<string> {
+  const sRef = storageRef(storage, path);
+  await uploadString(sRef, base64, 'data_url');
+  return getDownloadURL(sRef);
+}
+
+/** Upload a File blob to Firebase Storage, return download URL */
+export async function uploadFileToStorage(file: File, path: string): Promise<string> {
+  const sRef = storageRef(storage, path);
+  await uploadBytes(sRef, file);
+  return getDownloadURL(sRef);
+}
+
+// ─────────────────── Products ───────────────────────────
+
+export function subscribeToProducts(
+  callback: (products: Product[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const q = query(collection(db, 'products'));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const products = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
+      callback(products);
+    },
+    (err) => onError?.(err as Error)
+  );
+}
+
+export async function saveProductToFirestore(product: Product): Promise<void> {
+  const { id, ...data } = product;
+  // Strip undefined values — Firestore does not accept them
+  const clean = Object.fromEntries(
+    Object.entries(data).filter(([, v]) => v !== undefined)
+  );
+  await setDoc(doc(db, 'products', id), clean);
+}
+
+export async function deleteProductFromFirestore(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'products', id));
+}
+
+// ─────────────────── Settings ───────────────────────────
+
+export interface SiteSettings {
+  heroImageUrl?: string;
+}
+
+export function subscribeToSettings(
+  callback: (settings: SiteSettings) => void
+): () => void {
+  return onSnapshot(doc(db, 'settings', 'main'), (snap) => {
+    callback(snap.exists() ? (snap.data() as SiteSettings) : {});
+  });
+}
+
+export async function saveSettingsToFirestore(settings: Partial<SiteSettings>): Promise<void> {
+  await setDoc(doc(db, 'settings', 'main'), settings, { merge: true });
+}
+
+// ─────────────────── Seeding ────────────────────────────
+
+let _seedingInProgress = false;
+
+/** Seed Firestore with initial data the very first time the app runs. */
+export async function seedFirestoreIfEmpty(): Promise<void> {
+  if (_seedingInProgress) return;
+  _seedingInProgress = true;
+  try {
+    // Idempotency marker — prevents double-seeding across sessions
+    const markerSnap = await getDoc(doc(db, 'settings', 'seeded'));
+    if (markerSnap.exists()) return;
+
+    // Seed products
+    for (const product of SEED_PRODUCTS) {
+      const { id, ...data } = product;
+      const clean = Object.fromEntries(
+        Object.entries(data).filter(([, v]) => v !== undefined)
+      );
+      await setDoc(doc(db, 'products', id), clean);
+    }
+
+    // Mark seeded
+    await setDoc(doc(db, 'settings', 'seeded'), { seededAt: new Date().toISOString() });
+    console.log('[firestore] Seeded initial products.');
+  } catch (err) {
+    console.error('[firestore] Seeding failed:', err);
+  } finally {
+    _seedingInProgress = false;
+  }
+}

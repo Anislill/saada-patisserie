@@ -1,47 +1,61 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { Product, SEED_PRODUCTS } from '@/lib/firestore';
+import {
+  Product,
+  subscribeToProducts,
+  saveProductToFirestore,
+  deleteProductFromFirestore,
+  seedFirestoreIfEmpty,
+} from '@/lib/firestore';
 
 interface ProductStore {
   products: Product[];
-  addProduct: (p: Product) => void;
-  updateProduct: (p: Product) => void;
-  deleteProduct: (id: string) => void;
-  toggleAvailability: (id: string) => void;
+  isLoading: boolean;
+  error: string | null;
+  addProduct: (p: Product) => Promise<void>;
+  updateProduct: (p: Product) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
+  toggleAvailability: (id: string) => Promise<void>;
 }
 
-export const useProductStore = create<ProductStore>()(
-  persist(
-    (set) => ({
-      products: SEED_PRODUCTS,
+export const useProductStore = create<ProductStore>((set, get) => ({
+  products: [],
+  isLoading: true,
+  error: null,
 
-      addProduct: (p) =>
-        set((state) => ({ products: [...state.products, p] })),
+  addProduct: async (p) => {
+    await saveProductToFirestore(p);
+    // state updates automatically via onSnapshot
+  },
 
-      updateProduct: (p) =>
-        set((state) => ({
-          products: state.products.map((x) => (x.id === p.id ? p : x)),
-        })),
+  updateProduct: async (p) => {
+    await saveProductToFirestore(p);
+  },
 
-      deleteProduct: (id) =>
-        set((state) => ({
-          products: state.products.filter((p) => p.id !== id),
-        })),
+  deleteProduct: async (id) => {
+    await deleteProductFromFirestore(id);
+  },
 
-      toggleAvailability: (id) =>
-        set((state) => ({
-          products: state.products.map((p) =>
-            p.id === id ? { ...p, isAvailable: !p.isAvailable } : p
-          ),
-        })),
-    }),
-    {
-      name: 'saada-products',
-      // Don't store video base64 in localStorage — too large; kept in memory only
-      partialize: (state) => ({
-        ...state,
-        products: state.products.map(({ video: _v, ...rest }) => rest),
-      }),
+  toggleAvailability: async (id) => {
+    const product = get().products.find((p) => p.id === id);
+    if (!product) return;
+    await saveProductToFirestore({ ...product, isAvailable: !product.isAvailable });
+  },
+}));
+
+// ── Start real-time Firestore subscription immediately on module load ──
+let _seeded = false;
+
+subscribeToProducts(
+  (products) => {
+    useProductStore.setState({ products, isLoading: false, error: null });
+    // Seed only once, only when Firestore collection is empty
+    if (products.length === 0 && !_seeded) {
+      _seeded = true;
+      seedFirestoreIfEmpty().catch(console.error);
     }
-  )
+  },
+  (err) => {
+    console.error('[productStore] Firestore error:', err);
+    useProductStore.setState({ isLoading: false, error: err.message });
+  }
 );

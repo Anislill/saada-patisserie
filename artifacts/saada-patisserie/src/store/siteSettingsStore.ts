@@ -1,19 +1,26 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { SiteSettings, subscribeToSettings, saveSettingsToFirestore } from '@/lib/firestore';
 
 interface SiteSettingsState {
   heroImageUrl: string;
-  setHeroImageUrl: (url: string) => void;
+  isLoading: boolean;
+  setHeroImageUrl: (url: string) => Promise<void>;
 }
 
-export const useSiteSettingsStore = create<SiteSettingsState>()(
-  persist(
-    (set) => ({
-      heroImageUrl: '',
-      setHeroImageUrl: (url) => set({ heroImageUrl: url }),
-    }),
-    {
-      name: 'saada-site-settings',
-    }
-  )
-);
+export const useSiteSettingsStore = create<SiteSettingsState>((set) => ({
+  heroImageUrl: '',
+  isLoading: true,
+
+  setHeroImageUrl: async (url) => {
+    set({ heroImageUrl: url });
+    await saveSettingsToFirestore({ heroImageUrl: url });
+  },
+}));
+
+// ── Subscribe to Firestore settings in real-time ──
+subscribeToSettings((settings: SiteSettings) => {
+  useSiteSettingsStore.setState({
+    heroImageUrl: settings.heroImageUrl ?? '',
+    isLoading: false,
+  });
+});

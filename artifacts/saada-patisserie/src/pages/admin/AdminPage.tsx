@@ -1,7 +1,10 @@
 import * as React from "react";
 import { useLocation } from "wouter";
 import { useAuthStore } from "@/store/authStore";
-import { SEED_CATEGORIES, Product, PricingUnit } from "@/lib/firestore";
+import {
+  SEED_CATEGORIES, Product, PricingUnit,
+  uploadBase64ToStorage, uploadFileToStorage,
+} from "@/lib/firestore";
 import { useProductStore } from "@/store/productStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,7 +87,7 @@ function DashboardTab() {
 /* ── Image helpers ── */
 async function compressImage(file: File): Promise<string> {
   return new Promise((resolve) => {
-    const img = new Image();
+    const img = document.createElement('img');
     const objectUrl = URL.createObjectURL(file);
     img.onload = () => {
       const MAX = 900;
@@ -115,6 +118,7 @@ function ProductsTab() {
   const [showForm, setShowForm] = React.useState(false);
   const [form, setForm] = React.useState<Partial<Product>>({ isAvailable: true, categories: [], flavors: [], images: [], pricingUnit: 'piece' });
   const [uploading, setUploading] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
 
   const openAdd = () => {
     setEditing(null);
@@ -131,10 +135,22 @@ function ProductsTab() {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
     setUploading(true);
-    const compressed = await Promise.all(files.map(compressImage));
-    setForm(f => ({ ...f, images: [...(f.images ?? []), ...compressed] }));
-    setUploading(false);
-    e.target.value = "";
+    try {
+      const urls = await Promise.all(
+        files.map(async (file) => {
+          const base64 = await compressImage(file);
+          const path = `products/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, '-')}`;
+          return uploadBase64ToStorage(base64, path);
+        })
+      );
+      setForm(f => ({ ...f, images: [...(f.images ?? []), ...urls] }));
+    } catch (err) {
+      console.error('Image upload error:', err);
+      alert("Erreur lors du téléchargement de l'image. Vérifiez Firebase Storage.");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
   };
 
   const removeImage = (idx: number) =>
@@ -143,18 +159,25 @@ function ProductsTab() {
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 30 * 1024 * 1024) {
-      alert("La vidéo doit faire moins de 30 Mo.");
+    if (file.size > 50 * 1024 * 1024) {
+      alert("La vidéo doit faire moins de 50 Mo.");
       return;
     }
     setUploading(true);
-    const b64 = await fileToBase64(file);
-    setForm(f => ({ ...f, video: b64 }));
-    setUploading(false);
-    e.target.value = "";
+    try {
+      const path = `products/videos/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, '-')}`;
+      const url = await uploadFileToStorage(file, path);
+      setForm(f => ({ ...f, video: url }));
+    } catch (err) {
+      console.error('Video upload error:', err);
+      alert("Erreur lors du téléchargement de la vidéo. Vérifiez Firebase Storage.");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
   };
 
-  const saveProduct = () => {
+  const saveProduct = async () => {
     if (!form.name || !form.price) return;
     const saved: Product = {
       id: editing?.id ?? `p${Date.now()}`,
@@ -173,9 +196,17 @@ function ProductsTab() {
       pricingUnit: form.pricingUnit,
       video: form.video,
     };
-    if (editing) updateProduct(saved);
-    else addProduct(saved);
-    setShowForm(false);
+    setSaving(true);
+    try {
+      if (editing) await updateProduct(saved);
+      else await addProduct(saved);
+      setShowForm(false);
+    } catch (err) {
+      console.error('Save product error:', err);
+      alert("Erreur lors de la sauvegarde. Vérifiez votre connexion Firebase.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -222,7 +253,7 @@ function ProductsTab() {
                     )}
                   </td>
                   <td className="px-5 py-3">
-                    <button onClick={() => toggleAvailability(product.id)}
+                    <button onClick={() => { toggleAvailability(product.id).catch(console.error); }}
                       className={`flex items-center gap-1.5 px-2 py-1 text-xs rounded-sm border transition-colors ${product.isAvailable ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'}`}>
                       {product.isAvailable ? <Eye size={11} /> : <EyeOff size={11} />}
                       {product.isAvailable ? 'En ligne' : 'Masqué'}
@@ -231,7 +262,7 @@ function ProductsTab() {
                   <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => openEdit(product)} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm transition-colors" title="Modifier"><Edit2 size={15} /></button>
-                      <button onClick={() => { if (confirm("Supprimer ce produit ?")) deleteProduct(product.id); }} className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-red-50 rounded-sm transition-colors" title="Supprimer"><Trash2 size={15} /></button>
+                      <button onClick={() => { if (confirm("Supprimer ce produit ?")) deleteProduct(product.id).catch(console.error); }} className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-red-50 rounded-sm transition-colors" title="Supprimer"><Trash2 size={15} /></button>
                     </div>
                   </td>
                 </tr>
@@ -402,8 +433,8 @@ function ProductsTab() {
             </div>
             <div className="p-6 border-t border-border flex gap-3 justify-end">
               <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-sm">Annuler</Button>
-              <Button onClick={saveProduct} disabled={uploading} className="bg-secondary text-white hover:bg-secondary/90 rounded-sm">
-                {editing ? "Enregistrer" : "Ajouter"}
+              <Button onClick={saveProduct} disabled={uploading || saving} className="bg-secondary text-white hover:bg-secondary/90 rounded-sm">
+                {saving ? "Sauvegarde…" : editing ? "Enregistrer" : "Ajouter"}
               </Button>
             </div>
           </div>
