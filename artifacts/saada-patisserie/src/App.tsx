@@ -1,6 +1,10 @@
-import { Route, Switch, Router as WouterRouter } from 'wouter';
+import * as React from 'react';
+import { Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useAuthStore } from '@/store/authStore';
 
 // Customer Pages
 import HomePage from '@/pages/HomePage';
@@ -33,6 +37,27 @@ import '@/lib/i18n';
 
 const queryClient = new QueryClient();
 
+/** Global Firebase auth listener — runs once for the whole app lifetime. */
+function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { setUser, setLoading } = useAuthStore();
+  const [, setLocation] = useLocation();
+
+  React.useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      setLoading(false);
+
+      // If session expires while on an admin page, redirect to login
+      if (!firebaseUser && window.location.pathname.includes('/admin/')) {
+        setLocation('/admin');
+      }
+    });
+    return unsubscribe;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return <>{children}</>;
+}
+
 function Router() {
   return (
     <Switch>
@@ -53,11 +78,11 @@ function Router() {
       <Route path="/faq" component={FaqPage} />
       <Route path="/mentions-legales" component={LegalPage} />
       <Route path="/politique-confidentialite" component={PrivacyPage} />
-      
+
       {/* Admin Routes */}
       <Route path="/admin" component={AdminLoginPage} />
       <Route path="/admin/:rest*" component={AdminPage} />
-      
+
       <Route component={NotFoundPage} />
     </Switch>
   );
@@ -67,8 +92,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-        <ScrollToTop />
-        <Router />
+        <AuthProvider>
+          <ScrollToTop />
+          <Router />
+        </AuthProvider>
       </WouterRouter>
       <Toaster />
     </QueryClientProvider>

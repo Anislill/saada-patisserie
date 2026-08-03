@@ -10,35 +10,37 @@ import {
   Image,
   Ticket,
 } from "lucide-react";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useAuthStore } from "@/store/authStore";
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
-  const { user, setUser, setLoading, isLoading } = useAuthStore();
+  // Auth state is managed globally by AuthProvider in App.tsx
+  const { user, isLoading } = useAuthStore();
 
-  // Single source of truth: Firebase Auth state
+  // Redirect to login if not authenticated
   React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      setLoading(false);
-      if (!firebaseUser) {
-        setLocation("/admin");
-      }
-    });
-    return unsubscribe;
-  }, [setUser, setLoading, setLocation]);
+    if (!isLoading && !user) {
+      setLocation("/admin");
+    }
+  }, [user, isLoading, setLocation]);
 
   const handleLogout = async () => {
     await signOut(auth);
     setLocation("/admin");
   };
 
-  // Still resolving auth state — show nothing to avoid flash
-  if (isLoading) return null;
+  // Still resolving auth state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-muted-foreground text-sm">Chargement…</div>
+      </div>
+    );
+  }
 
-  // Not authenticated — redirect handled by onAuthStateChanged, render nothing
+  // Not authenticated
   if (!user) return null;
 
   const menu = [

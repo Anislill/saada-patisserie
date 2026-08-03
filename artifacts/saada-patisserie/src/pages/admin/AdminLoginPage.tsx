@@ -2,33 +2,36 @@ import * as React from "react";
 import { useLocation } from "wouter";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import logoPath from "@assets/0_file_00000000873481f494288e53319f68ef-removebg-preview_1785313194757.png";
 
 export default function AdminLoginPage() {
   const [, setLocation] = useLocation();
+  const { setUser, setLoading } = useAuthStore();
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
-  const [loading, setLoading] = React.useState(false);
+  const [loading, setLocalLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
-
-    console.log("[AdminLogin] attempting sign-in for:", email);
+    setLocalLoading(true);
 
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password);
-      console.log("[AdminLogin] success, uid:", cred.user.uid);
+      // Update store immediately so AdminLayout renders without waiting
+      // for the global onAuthStateChanged to fire
+      setUser(cred.user);
+      setLoading(false);
       setLocation("/admin/dashboard");
     } catch (err: any) {
-      console.error("[AdminLogin] error code:", err?.code, "| message:", err?.message);
-
+      console.error("[AdminLogin] error:", err?.code, err?.message);
       const code: string = err?.code ?? "";
+
       if (
         code === "auth/invalid-credential" ||
         code === "auth/wrong-password" ||
@@ -39,7 +42,7 @@ export default function AdminLoginPage() {
         setError("محاولات كثيرة جداً. يرجى المحاولة لاحقاً.");
       } else if (code === "auth/unauthorized-domain") {
         setError(
-          `النطاق غير مُصرَّح به في Firebase. أضف هذا النطاق في Firebase Console → Authentication → Settings → Authorized domains: ${window.location.hostname}`
+          `النطاق غير مُصرَّح به في Firebase. أضف: ${window.location.hostname} في Firebase Console → Authentication → Settings → Authorized domains`
         );
       } else if (code === "auth/network-request-failed") {
         setError("خطأ في الشبكة. تحقق من الاتصال بالإنترنت.");
@@ -47,7 +50,7 @@ export default function AdminLoginPage() {
         setError(err?.message ?? "حدث خطأ غير متوقع.");
       }
     } finally {
-      setLoading(false);
+      setLocalLoading(false);
     }
   };
 
@@ -58,7 +61,7 @@ export default function AdminLoginPage() {
         <h1 className="text-2xl font-serif mb-6 text-foreground">Accès Réservé</h1>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm text-right">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm text-right leading-relaxed">
             {error}
           </div>
         )}
