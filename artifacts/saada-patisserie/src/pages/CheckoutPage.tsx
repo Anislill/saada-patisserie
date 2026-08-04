@@ -90,24 +90,24 @@ function NavButtons({
   disabled?: boolean;
 }) {
   return (
-    <div className="pt-8 border-t border-[#1F3D2E]/10 flex items-center gap-4 mt-8">
+    <div className="pt-8 border-t border-[#1F3D2E]/10 flex items-center gap-3 mt-8">
       {onBack && (
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 text-sm text-[#1F3D2E]/50 hover:text-[#1F3D2E] transition-colors shrink-0"
+          className="flex items-center gap-2 h-11 px-5 rounded-full border border-[#1F3D2E]/25 text-sm font-medium text-[#1F3D2E]/70 hover:border-[#1F3D2E] hover:text-[#1F3D2E] hover:bg-[#1F3D2E]/5 transition-all duration-200 shrink-0"
         >
-          <ArrowLeft size={14} />
+          <ArrowLeft size={15} />
           Retour
         </button>
       )}
       <Button
         type="submit"
         disabled={disabled}
-        className="flex-1 sm:flex-none sm:ml-auto bg-[#1F3D2E] text-white hover:bg-[#1F3D2E]/90 rounded-none h-12 px-8 text-xs font-semibold tracking-widest uppercase"
+        className="flex-1 sm:flex-none sm:ml-auto h-11 px-7 rounded-full bg-[#1F3D2E] text-white text-sm font-semibold tracking-wide shadow-md hover:shadow-lg hover:bg-[#16301f] active:scale-[0.98] transition-all duration-200"
       >
         {submitLabel}
-        <ChevronRight size={15} className="ml-2" />
+        <ChevronRight size={16} className="ml-2" />
       </Button>
     </div>
   );
@@ -293,19 +293,19 @@ export default function CheckoutPage() {
                     </p>
                   </div>
 
-                  <div className="pt-8 border-t border-[#1F3D2E]/10 flex items-center gap-4 mt-8">
+                  <div className="pt-8 border-t border-[#1F3D2E]/10 flex items-center gap-3 mt-8">
                     <button
                       type="button"
                       onClick={() => goTo(2)}
-                      className="flex items-center gap-1.5 text-sm text-[#1F3D2E]/50 hover:text-[#1F3D2E] transition-colors shrink-0"
+                      className="flex items-center gap-2 h-11 px-5 rounded-full border border-[#1F3D2E]/25 text-sm font-medium text-[#1F3D2E]/70 hover:border-[#1F3D2E] hover:text-[#1F3D2E] hover:bg-[#1F3D2E]/5 transition-all duration-200 shrink-0"
                     >
-                      <ArrowLeft size={14} />
+                      <ArrowLeft size={15} />
                       Retour
                     </button>
                     <button
                       type="button"
                       onClick={handleConfirmOrder}
-                      className="flex-1 sm:flex-none sm:ml-auto bg-[#1F3D2E] text-white hover:bg-[#1F3D2E]/90 h-12 px-8 text-xs font-semibold tracking-widest uppercase flex items-center justify-center gap-2 transition-colors"
+                      className="flex-1 sm:flex-none sm:ml-auto h-11 px-7 rounded-full bg-[#1F3D2E] text-white text-sm font-semibold tracking-wide shadow-md hover:shadow-lg hover:bg-[#16301f] active:scale-[0.98] flex items-center justify-center gap-2 transition-all duration-200"
                     >
                       Confirmer la commande
                       <Check size={15} strokeWidth={2.5} />
