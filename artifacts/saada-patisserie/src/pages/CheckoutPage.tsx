@@ -1,33 +1,169 @@
 import * as React from "react";
-import { Link, useLocation } from "wouter";
-import { useTranslation } from "react-i18next";
-import { Check, ChevronRight } from "lucide-react";
+import { useLocation } from "wouter";
+import { Check, Tag, X, ChevronRight, ArrowLeft } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCartStore } from "@/store/cartStore";
+import { usePromoStore } from "@/store/promoStore";
+import type { Coupon } from "@/lib/firestore";
 
+/* ── Stepper ── */
+function Stepper({ step }: { step: number }) {
+  const steps = ["Informations", "Livraison", "Paiement"];
+  return (
+    <div className="flex items-center justify-center gap-0 max-w-xs mx-auto mt-6">
+      {steps.map((label, i) => {
+        const idx = i + 1;
+        const done = step > idx;
+        const active = step === idx;
+        return (
+          <React.Fragment key={idx}>
+            <div className="flex flex-col items-center gap-1.5">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-300 ${
+                  done
+                    ? "bg-[#1F3D2E] text-white"
+                    : active
+                    ? "bg-[#1F3D2E] text-white ring-4 ring-[#1F3D2E]/15"
+                    : "bg-transparent text-[#1F3D2E]/40 border border-[#1F3D2E]/25"
+                }`}
+              >
+                {done ? <Check size={13} strokeWidth={2.5} /> : idx}
+              </div>
+              <span
+                className={`text-[10px] font-medium tracking-wide uppercase hidden sm:block transition-colors ${
+                  active ? "text-[#1F3D2E]" : done ? "text-[#1F3D2E]/60" : "text-[#1F3D2E]/30"
+                }`}
+              >
+                {label}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div
+                className={`flex-1 h-px mx-2 mb-4 transition-colors duration-300 ${
+                  step > idx ? "bg-[#1F3D2E]" : "bg-[#1F3D2E]/15"
+                }`}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Field wrapper ── */
+function Field({
+  label,
+  required,
+  children,
+  span2,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+  span2?: boolean;
+}) {
+  return (
+    <div className={span2 ? "md:col-span-2" : ""}>
+      <label className="block text-xs font-semibold uppercase tracking-widest text-[#1F3D2E]/60 mb-2">
+        {label}
+        {required && <span className="text-[#C9A867] ml-0.5">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+const inputCls =
+  "w-full border border-[#1F3D2E]/15 bg-white rounded-none px-4 py-3 text-sm text-[#0F0E0D] placeholder:text-[#0F0E0D]/30 focus:outline-none focus:border-[#1F3D2E]/50 focus:ring-0 transition-colors";
+
+/* ── Nav buttons ── */
+function NavButtons({
+  onBack,
+  submitLabel,
+  disabled,
+}: {
+  onBack?: () => void;
+  submitLabel: string;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="pt-8 border-t border-[#1F3D2E]/10 flex items-center gap-4 mt-8">
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-sm text-[#1F3D2E]/50 hover:text-[#1F3D2E] transition-colors shrink-0"
+        >
+          <ArrowLeft size={14} />
+          Retour
+        </button>
+      )}
+      <Button
+        type="submit"
+        disabled={disabled}
+        className="flex-1 sm:flex-none sm:ml-auto bg-[#1F3D2E] text-white hover:bg-[#1F3D2E]/90 rounded-none h-12 px-8 text-xs font-semibold tracking-widest uppercase"
+      >
+        {submitLabel}
+        <ChevronRight size={15} className="ml-2" />
+      </Button>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════ */
 export default function CheckoutPage() {
-  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { items, getTotal, clearCart } = useCartStore();
+  const { coupons } = usePromoStore();
+
   const [step, setStep] = React.useState(1);
-  const [deliveryMode, setDeliveryMode] = React.useState("home");
+
+  /* Coupon */
+  const [couponInput, setCouponInput] = React.useState("");
+  const [appliedCoupon, setAppliedCoupon] = React.useState<Coupon | null>(null);
+  const [couponError, setCouponError] = React.useState("");
 
   const total = getTotal();
-  const deliveryFee = deliveryMode === "home" ? (total > 100 ? 0 : 9.90) : 0;
-  const finalTotal = total + deliveryFee;
+  const deliveryFee = total >= 100 ? 0 : 9.9;
+  const discount = appliedCoupon ? Math.round((total * appliedCoupon.discount) / 100 * 100) / 100 : 0;
+  const finalTotal = total + deliveryFee - discount;
 
   React.useEffect(() => {
-    if (items.length === 0 && step === 1) {
-      setLocation("/panier");
-    }
+    if (items.length === 0 && step === 1) setLocation("/panier");
   }, [items, step, setLocation]);
 
-  const handleNextStep = (e: React.FormEvent) => {
-    e.preventDefault();
-    setStep(step + 1);
-    window.scrollTo(0, 0);
+  const goTo = (s: number) => {
+    setStep(s);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const applyCoupon = () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    const found = coupons.find((c) => c.code === code && c.active);
+    if (!found) {
+      setCouponError("Code invalide ou expiré");
+      return;
+    }
+    if (found.minOrder > 0 && total < found.minOrder) {
+      setCouponError(`Commande minimum : ${found.minOrder.toFixed(2)} د.ت`);
+      return;
+    }
+    if (found.expiry && new Date(found.expiry) < new Date()) {
+      setCouponError("Ce coupon a expiré");
+      return;
+    }
+    setAppliedCoupon(found);
+    setCouponError("");
+    setCouponInput("");
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError("");
   };
 
   const handleConfirmOrder = () => {
@@ -37,195 +173,244 @@ export default function CheckoutPage() {
 
   return (
     <Layout>
-      <div className="bg-muted/30 py-8">
-        <div className="container mx-auto px-4 md:px-8 text-center">
-          <h1 className="text-3xl md:text-4xl font-serif text-foreground mb-6">{t('checkout.title')}</h1>
-          
-          <div className="flex items-center justify-center gap-4 max-w-lg mx-auto">
-            <div className={`flex items-center gap-2 ${step >= 1 ? 'text-foreground' : 'text-muted-foreground'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 1 ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}`}>
-                {step > 1 ? <Check size={12} /> : "1"}
-              </div>
-              <span className="text-sm font-medium hidden sm:inline-block">{t('checkout.step1')}</span>
-            </div>
-            <div className={`flex-1 h-px ${step >= 2 ? 'bg-foreground' : 'bg-border'}`} />
-            <div className={`flex items-center gap-2 ${step >= 2 ? 'text-foreground' : 'text-muted-foreground'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 2 ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}`}>
-                {step > 2 ? <Check size={12} /> : "2"}
-              </div>
-              <span className="text-sm font-medium hidden sm:inline-block">{t('checkout.step2')}</span>
-            </div>
-            <div className={`flex-1 h-px ${step >= 3 ? 'bg-foreground' : 'bg-border'}`} />
-            <div className={`flex items-center gap-2 ${step >= 3 ? 'text-foreground' : 'text-muted-foreground'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 3 ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}`}>
-                3
-              </div>
-              <span className="text-sm font-medium hidden sm:inline-block">{t('checkout.step3')}</span>
-            </div>
-          </div>
+      {/* ── Header ── */}
+      <div className="bg-[#FAF9F6] border-b border-[#1F3D2E]/8 py-8 px-4">
+        <div className="container mx-auto max-w-4xl text-center">
+          <h1 className="text-3xl font-serif text-[#0F0E0D] tracking-tight">Commande</h1>
+          <Stepper step={step} />
         </div>
       </div>
 
-      <div className="container mx-auto px-4 md:px-8 py-12 md:py-24">
-        <div className="flex flex-col lg:flex-row gap-12 lg:gap-20">
-          
-          <div className="w-full lg:w-2/3">
-            {step === 1 && (
-              <form onSubmit={handleNextStep} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <h2 className="text-2xl font-serif mb-6">{t('checkout.step1')}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">{t('checkout.firstName')} *</label>
-                    <Input required placeholder="Votre prénom" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">{t('checkout.lastName')} *</label>
-                    <Input required placeholder="Votre nom" />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-medium">{t('checkout.email')} *</label>
-                    <Input type="email" required placeholder="vous@exemple.com" />
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-medium">{t('checkout.phone')} *</label>
-                    <Input type="tel" required placeholder="+33 6 00 00 00 00" />
-                  </div>
-                </div>
-                
-                <div className="pt-6 border-t border-border flex justify-end">
-                  <Button type="submit" size="lg">
-                    Continuer vers la livraison <ChevronRight size={18} className="ml-2" />
-                  </Button>
-                </div>
-              </form>
-            )}
+      {/* ── Body ── */}
+      <div className="bg-[#FAF9F6] min-h-[60vh]">
+        <div className="container mx-auto max-w-4xl px-4 py-10 lg:py-14">
+          <div className="flex flex-col lg:flex-row gap-10 lg:gap-14">
 
-            {step === 2 && (
-              <form onSubmit={handleNextStep} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-serif">{t('checkout.step2')}</h2>
-                  <button type="button" onClick={() => setStep(1)} className="text-sm text-muted-foreground underline">Modifier mes infos</button>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                  <label className={`border p-4 cursor-pointer transition-colors ${deliveryMode === 'home' ? 'border-secondary bg-secondary/5' : 'border-border hover:border-foreground'}`}>
+            {/* ── Left: forms ── */}
+            <div className="flex-1 min-w-0">
+
+              {/* STEP 1 — Informations */}
+              {step === 1 && (
+                <form
+                  onSubmit={(e) => { e.preventDefault(); goTo(2); }}
+                  className="animate-in fade-in slide-in-from-bottom-3 duration-400"
+                >
+                  <h2 className="text-xl font-serif text-[#0F0E0D] mb-8">Vos informations</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <Field label="Prénom" required>
+                      <input className={inputCls} required placeholder="Prénom" />
+                    </Field>
+                    <Field label="Nom" required>
+                      <input className={inputCls} required placeholder="Nom" />
+                    </Field>
+                    <Field label="Email" required span2>
+                      <input className={inputCls} type="email" required placeholder="vous@exemple.com" />
+                    </Field>
+                    <Field label="Téléphone" required span2>
+                      <input className={inputCls} type="tel" required placeholder="+216 XX XXX XXX" />
+                    </Field>
+                  </div>
+                  <NavButtons submitLabel="Continuer vers la livraison" />
+                </form>
+              )}
+
+              {/* STEP 2 — Livraison */}
+              {step === 2 && (
+                <form
+                  onSubmit={(e) => { e.preventDefault(); goTo(3); }}
+                  className="animate-in fade-in slide-in-from-bottom-3 duration-400"
+                >
+                  <div className="flex items-center justify-between mb-8">
+                    <h2 className="text-xl font-serif text-[#0F0E0D]">Livraison</h2>
+                    <button
+                      type="button"
+                      onClick={() => goTo(1)}
+                      className="text-xs text-[#1F3D2E]/50 hover:text-[#1F3D2E] underline underline-offset-2 transition-colors"
+                    >
+                      Modifier mes infos
+                    </button>
+                  </div>
+
+                  {/* Livraison à domicile — seul mode */}
+                  <div className="border border-[#1F3D2E]/20 bg-[#1F3D2E]/[0.03] p-5 mb-8 flex items-start gap-3">
+                    <div className="w-4 h-4 mt-0.5 rounded-full border-2 border-[#1F3D2E] flex items-center justify-center shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-[#1F3D2E]" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm text-[#0F0E0D]">Livraison à domicile</p>
+                      <p className="text-xs text-[#0F0E0D]/50 mt-0.5">
+                        {deliveryFee === 0 ? "Offerte pour cette commande" : `${deliveryFee.toFixed(2)} د.ت · Livraison en 24/48h`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-5">
+                    <Field label="Adresse" required>
+                      <input className={inputCls} required placeholder="Numéro et nom de rue" />
+                    </Field>
+                    <div className="grid grid-cols-2 gap-5">
+                      <Field label="Code Postal" required>
+                        <input className={inputCls} required placeholder="Ex: 1000" />
+                      </Field>
+                      <Field label="Ville" required>
+                        <input className={inputCls} required placeholder="Ex: Tunis" />
+                      </Field>
+                    </div>
+                    <Field label="Instructions (optionnel)">
+                      <input className={inputCls} placeholder="Code porte, étage, indications..." />
+                    </Field>
+                  </div>
+
+                  <NavButtons onBack={() => goTo(1)} submitLabel="Continuer vers le paiement" />
+                </form>
+              )}
+
+              {/* STEP 3 — Paiement */}
+              {step === 3 && (
+                <div className="animate-in fade-in slide-in-from-bottom-3 duration-400">
+                  <div className="flex items-center justify-between mb-8">
+                    <h2 className="text-xl font-serif text-[#0F0E0D]">Paiement</h2>
+                    <button
+                      type="button"
+                      onClick={() => goTo(2)}
+                      className="text-xs text-[#1F3D2E]/50 hover:text-[#1F3D2E] underline underline-offset-2 transition-colors"
+                    >
+                      Modifier la livraison
+                    </button>
+                  </div>
+
+                  <div className="border border-[#C9A867]/40 bg-[#C9A867]/5 p-6">
                     <div className="flex items-center gap-3 mb-2">
-                      <input type="radio" name="delivery" checked={deliveryMode === 'home'} onChange={() => setDeliveryMode('home')} className="accent-secondary" />
-                      <span className="font-medium">{t('checkout.homeDelivery')}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground ml-7">Livraison en 24/48h via coursier réfrigéré.</p>
-                  </label>
-                  <label className={`border p-4 cursor-pointer transition-colors ${deliveryMode === 'pickup' ? 'border-secondary bg-secondary/5' : 'border-border hover:border-foreground'}`}>
-                    <div className="flex items-center gap-3 mb-2">
-                      <input type="radio" name="delivery" checked={deliveryMode === 'pickup'} onChange={() => setDeliveryMode('pickup')} className="accent-secondary" />
-                      <span className="font-medium">{t('checkout.storePickup')}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground ml-7">Gratuit. Retrait en boutique le jour même.</p>
-                  </label>
-                </div>
-
-                {deliveryMode === "home" ? (
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">{t('checkout.address')} *</label>
-                      <Input required placeholder="Numéro et nom de rue" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">{t('checkout.postalCode')} *</label>
-                        <Input required placeholder="Ex: 75001" />
+                      <div className="w-8 h-8 rounded-full bg-[#C9A867]/20 flex items-center justify-center">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A867" strokeWidth="2">
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">{t('checkout.city')} *</label>
-                        <Input required placeholder="Ex: Paris" />
+                      <h3 className="font-semibold text-sm text-[#0F0E0D]">Paiement à la livraison</h3>
+                    </div>
+                    <p className="text-sm text-[#0F0E0D]/55 ml-11">
+                      Vous réglez votre commande en espèces au moment de la réception.
+                    </p>
+                  </div>
+
+                  <div className="pt-8 border-t border-[#1F3D2E]/10 flex items-center gap-4 mt-8">
+                    <button
+                      type="button"
+                      onClick={() => goTo(2)}
+                      className="flex items-center gap-1.5 text-sm text-[#1F3D2E]/50 hover:text-[#1F3D2E] transition-colors shrink-0"
+                    >
+                      <ArrowLeft size={14} />
+                      Retour
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmOrder}
+                      className="flex-1 sm:flex-none sm:ml-auto bg-[#1F3D2E] text-white hover:bg-[#1F3D2E]/90 h-12 px-8 text-xs font-semibold tracking-widest uppercase flex items-center justify-center gap-2 transition-colors"
+                    >
+                      Confirmer la commande
+                      <Check size={15} strokeWidth={2.5} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Right: order summary ── */}
+            <div className="w-full lg:w-80 shrink-0">
+              <div className="border border-[#1F3D2E]/10 bg-white p-6 sticky top-24">
+                <h3 className="font-serif text-lg text-[#0F0E0D] mb-5">Votre commande</h3>
+
+                {/* Items */}
+                <div className="space-y-4 mb-6">
+                  {items.map((item) => (
+                    <div key={item.id} className="flex gap-3 items-start">
+                      <div className="w-14 h-14 shrink-0 bg-[#FAF9F6] border border-[#1F3D2E]/8 overflow-hidden">
+                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-[#0F0E0D] line-clamp-2 leading-snug">{item.name}</p>
+                        <p className="text-xs text-[#0F0E0D]/40 mt-1">Qté : {item.quantity}</p>
+                      </div>
+                      <span className="text-sm font-medium text-[#0F0E0D] shrink-0">
+                        {(item.price * item.quantity).toFixed(2)} د.ت
+                      </span>
                     </div>
+                  ))}
+                </div>
+
+                {/* Coupon input */}
+                <div className="border-t border-[#1F3D2E]/8 pt-5 mb-5">
+                  {appliedCoupon ? (
+                    <div className="flex items-center justify-between bg-[#1F3D2E]/5 border border-[#1F3D2E]/15 px-3 py-2.5 rounded-sm">
+                      <div className="flex items-center gap-2">
+                        <Tag size={13} className="text-[#1F3D2E]" />
+                        <span className="text-xs font-semibold font-mono text-[#1F3D2E]">{appliedCoupon.code}</span>
+                        <span className="text-xs text-[#1F3D2E]/60">−{appliedCoupon.discount}%</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={removeCoupon}
+                        className="text-[#0F0E0D]/30 hover:text-[#8A2E2E] transition-colors"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ) : (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Instructions (optionnel)</label>
-                      <Input placeholder="Code porte, étage, bâtiment..." />
+                      <label className="text-[10px] font-semibold uppercase tracking-widest text-[#1F3D2E]/50">
+                        Code promo
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          value={couponInput}
+                          onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponError(""); }}
+                          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), applyCoupon())}
+                          placeholder="Entrez votre code"
+                          className="flex-1 border border-[#1F3D2E]/15 bg-[#FAF9F6] px-3 py-2 text-xs font-mono placeholder:text-[#0F0E0D]/25 focus:outline-none focus:border-[#1F3D2E]/40 transition-colors"
+                        />
+                        <button
+                          type="button"
+                          onClick={applyCoupon}
+                          className="px-3 py-2 bg-[#1F3D2E]/8 hover:bg-[#1F3D2E]/15 text-[#1F3D2E] text-xs font-semibold transition-colors"
+                        >
+                          Appliquer
+                        </button>
+                      </div>
+                      {couponError && (
+                        <p className="text-[11px] text-[#8A2E2E]">{couponError}</p>
+                      )}
                     </div>
+                  )}
+                </div>
+
+                {/* Totals */}
+                <div className="border-t border-[#1F3D2E]/8 pt-5 space-y-3 text-sm">
+                  <div className="flex justify-between text-[#0F0E0D]/55">
+                    <span>Sous-total</span>
+                    <span>{total.toFixed(2)} د.ت</span>
                   </div>
-                ) : (
-                  <div className="bg-muted p-6 text-sm">
-                    <h4 className="font-medium mb-2">Boutique Saada Saint-Honoré</h4>
-                    <p className="text-muted-foreground mb-4">123 rue Saint-Honoré, 75001 Paris<br/>Ouvert du Mardi au Dimanche (10h - 19h)</p>
-                    <div className="space-y-2 max-w-sm">
-                      <label className="text-sm font-medium">Date et heure de retrait souhaitées *</label>
-                      <Input type="datetime-local" required />
-                    </div>
+                  <div className="flex justify-between text-[#0F0E0D]/55">
+                    <span>Livraison</span>
+                    <span className={deliveryFee === 0 ? "text-[#1F3D2E] font-medium" : ""}>
+                      {deliveryFee === 0 ? "Offerte" : `${deliveryFee.toFixed(2)} د.ت`}
+                    </span>
                   </div>
-                )}
-                
-                <div className="pt-6 border-t border-border flex justify-between items-center">
-                  <button type="button" onClick={() => setStep(1)} className="text-sm font-medium text-muted-foreground hover:text-foreground">Retour</button>
-                  <Button type="submit" size="lg">
-                    Continuer vers le paiement <ChevronRight size={18} className="ml-2" />
-                  </Button>
-                </div>
-              </form>
-            )}
-
-            {step === 3 && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-serif">Paiement</h2>
-                  <button type="button" onClick={() => setStep(2)} className="text-sm text-muted-foreground underline">Modifier livraison</button>
-                </div>
-                
-                <div className="border border-secondary bg-secondary/5 p-6 mb-8">
-                  <h3 className="font-medium text-lg mb-2">{t('checkout.paymentMethod')}</h3>
-                  <p className="text-muted-foreground">{t('checkout.paymentInfo')}</p>
-                </div>
-                
-                <div className="pt-6 border-t border-border flex justify-between items-center">
-                  <button type="button" onClick={() => setStep(2)} className="text-sm font-medium text-muted-foreground hover:text-foreground">Retour</button>
-                  <Button onClick={handleConfirmOrder} size="lg" className="w-full sm:w-auto">
-                    {t('checkout.confirm')}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="w-full lg:w-1/3">
-            <div className="bg-muted/20 p-6 md:p-8 border border-border sticky top-24">
-              <h2 className="text-xl font-serif mb-6">Votre Commande</h2>
-              
-              <div className="space-y-4 mb-6">
-                {items.map(item => (
-                  <div key={item.id} className="flex gap-4">
-                    <img src={item.image} alt={item.name} className="w-16 h-16 object-cover bg-background border border-border" />
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm line-clamp-1">{item.name}</h4>
-                      <p className="text-xs text-muted-foreground mt-1">Qté: {item.quantity}</p>
+                  {appliedCoupon && (
+                    <div className="flex justify-between text-[#1F3D2E] font-medium">
+                      <span>Réduction ({appliedCoupon.discount}%)</span>
+                      <span>−{discount.toFixed(2)} د.ت</span>
                     </div>
-                    <div className="font-medium text-sm">
-                      {(item.price * item.quantity).toFixed(2)} د.ت
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="border-t border-border pt-6 space-y-4 mb-6 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Sous-total</span>
-                  <span className="font-medium">{total.toFixed(2)} د.ت</span>
+                  )}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Livraison</span>
-                  <span className="font-medium">{deliveryFee === 0 ? 'Offerte' : `${deliveryFee.toFixed(2)} د.ت`}</span>
-                </div>
-              </div>
 
-              <div className="border-t border-border pt-6">
-                <div className="flex justify-between items-end">
-                  <span className="text-lg font-serif">Total</span>
-                  <span className="text-2xl font-serif font-medium">{finalTotal.toFixed(2)} د.ت</span>
+                <div className="border-t border-[#1F3D2E]/8 mt-4 pt-4 flex justify-between items-baseline">
+                  <span className="font-serif text-base text-[#0F0E0D]">Total</span>
+                  <span className="font-serif text-2xl text-[#0F0E0D]">{finalTotal.toFixed(2)} <span className="text-lg">د.ت</span></span>
                 </div>
               </div>
             </div>
-          </div>
 
+          </div>
         </div>
       </div>
     </Layout>
