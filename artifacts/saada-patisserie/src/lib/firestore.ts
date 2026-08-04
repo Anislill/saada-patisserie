@@ -2,10 +2,11 @@ import {
   collection, doc, setDoc, deleteDoc, onSnapshot,
   getDocs, getDoc, query,
 } from 'firebase/firestore';
-import {
-  ref as storageRef, uploadString, uploadBytes, getDownloadURL,
-} from 'firebase/storage';
-import { db, storage } from './firebase';
+import { db } from './firebase';
+
+// ─────────────────── Cloudinary config ──────────────────
+const CLOUDINARY_CLOUD = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME as string;
+const CLOUDINARY_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET as string;
 
 import productArabesque from "@assets/generated_images/product-arabesque.jpg";
 import productSignature from "@assets/generated_images/product-signature.jpg";
@@ -171,20 +172,38 @@ export const SEED_TESTIMONIALS = [
   { id: "t4", name: "Jean-Paul V.", rating: 4, text: "Très belle découverte. Un service client réactif et des produits de très haute qualité." }
 ];
 
-// ─────────────────── Storage helpers ───────────────────
+// ─────────────────── Cloudinary helpers ─────────────────
 
-/** Upload a base64 data-URL to Firebase Storage, return download URL */
-export async function uploadBase64ToStorage(base64: string, path: string): Promise<string> {
-  const sRef = storageRef(storage, path);
-  await uploadString(sRef, base64, 'data_url');
-  return getDownloadURL(sRef);
+async function cloudinaryUpload(
+  formData: FormData,
+  resourceType: 'image' | 'video',
+): Promise<string> {
+  formData.append('upload_preset', CLOUDINARY_PRESET);
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/${resourceType}/upload`,
+    { method: 'POST', body: formData },
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message ?? `Cloudinary ${resourceType} upload failed (${res.status})`);
+  }
+  const data = await res.json();
+  return data.secure_url as string;
 }
 
-/** Upload a File blob to Firebase Storage, return download URL */
-export async function uploadFileToStorage(file: File, path: string): Promise<string> {
-  const sRef = storageRef(storage, path);
-  await uploadBytes(sRef, file);
-  return getDownloadURL(sRef);
+/** Upload a base64 data-URL image to Cloudinary, return secure URL */
+export async function uploadBase64ToStorage(base64: string, _path: string): Promise<string> {
+  const fd = new FormData();
+  fd.append('file', base64);
+  return cloudinaryUpload(fd, 'image');
+}
+
+/** Upload a File (image or video) to Cloudinary, return secure URL */
+export async function uploadFileToStorage(file: File, _path: string): Promise<string> {
+  const fd = new FormData();
+  fd.append('file', file);
+  const resourceType = file.type.startsWith('video/') ? 'video' : 'image';
+  return cloudinaryUpload(fd, resourceType);
 }
 
 // ─────────────────── Products ───────────────────────────
