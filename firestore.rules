@@ -19,10 +19,35 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
-    // Orders: anyone can create (guest checkout), authenticated can read/update
+    // Orders:
+    //   - Any authenticated user can create (their own order only)
+    //   - A user can read their own orders (userId match)
+    //   - Admin can read/update all orders (uid listed in admins/{uid})
     match /orders/{id} {
-      allow create: if true;
-      allow read, update, delete: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null
+        && (resource.data.userId == request.auth.uid
+            || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+      allow update: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow delete: if false;
+    }
+
+    // User profiles: each user can read/write only their own document
+    match /users/{uid} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == uid;
+      // Admins can read all profiles
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Admins collection: only admins can read (no self-promotion)
+    match /admins/{uid} {
+      allow read: if request.auth != null
+        && request.auth.uid == uid;
+      allow write: if false;
     }
 
     // Deny everything else

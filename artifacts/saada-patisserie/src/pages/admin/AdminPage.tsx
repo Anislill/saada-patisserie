@@ -4,6 +4,8 @@ import { useAuthStore } from "@/store/authStore";
 import {
   SEED_CATEGORIES, Product, PricingUnit, Coupon,
   uploadBase64ToStorage, uploadFileToStorage,
+  subscribeToAllOrders, subscribeToAllClients, updateOrderStatus,
+  type Order, type OrderStatus, type CustomerProfile,
 } from "@/lib/firestore";
 import { useProductStore } from "@/store/productStore";
 import { usePromoStore } from "@/store/promoStore";
@@ -54,28 +56,85 @@ function StatCard({ label, value, sub, icon: Icon, color = "text-secondary" }: {
 }
 
 /* ─────────────────── DASHBOARD TAB ─────────────────── */
+const STATUS_COLORS: Record<OrderStatus, string> = {
+  "En attente":     "bg-yellow-50 text-yellow-700 border-yellow-200",
+  "En préparation": "bg-blue-50 text-blue-700 border-blue-200",
+  "Expédiée":       "bg-purple-50 text-purple-700 border-purple-200",
+  "Livrée":         "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Annulée":        "bg-red-50 text-red-600 border-red-200",
+};
+
+const ALL_STATUSES: OrderStatus[] = ["En attente", "En préparation", "Expédiée", "Livrée", "Annulée"];
+
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+}
+
 function DashboardTab() {
   const products = useProductStore((s) => s.products);
+  const [orders, setOrders] = React.useState<Order[]>([]);
+
+  React.useEffect(() => {
+    const unsub = subscribeToAllOrders(setOrders, (err) => console.error("[admin/dashboard]", err));
+    return unsub;
+  }, []);
+
+  const now = new Date();
+  const thisMonth = orders.filter((o) => {
+    const d = new Date(o.createdAt);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  const revenue = thisMonth.filter(o => o.status !== "Annulée").reduce((s, o) => s + o.total, 0);
+  const uniqueClients = new Set(orders.map((o) => o.userId).filter(Boolean)).size;
+
   return (
     <div>
       <h2 className="text-2xl font-serif mb-6">Tableau de Bord</h2>
-      <FirebaseBanner />
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Chiffre d'Affaires" value="0 €" sub="Ce mois" icon={Tag} />
-        <StatCard label="Commandes" value="0" sub="Ce mois" icon={ShoppingBag} />
-        <StatCard label="Nouveaux Clients" value="0" sub="Ce mois" icon={Users} />
-        <StatCard label="Produits Actifs" value={products.filter(p => p.isAvailable).length.toString()} icon={PackageSearch} />
+        <StatCard label="Chiffre d'Affaires" value={`${revenue.toFixed(0)} د.ت`} sub="Ce mois" icon={Tag} />
+        <StatCard label="Commandes" value={thisMonth.length.toString()} sub="Ce mois" icon={ShoppingBag} />
+        <StatCard label="Clients enregistrés" value={uniqueClients.toString()} icon={Users} />
+        <StatCard label="Produits Actifs" value={products.filter((p) => p.isAvailable).length.toString()} icon={PackageSearch} />
       </div>
-      {/* recent orders */}
       <div className="bg-background border border-border rounded-sm overflow-hidden">
         <div className="p-5 border-b border-border">
           <h3 className="font-serif text-lg">Dernières Commandes</h3>
         </div>
-        <div className="p-10 text-center text-muted-foreground text-sm">
-          <ShoppingBag size={32} className="mx-auto mb-3 opacity-30" />
-          <p>Aucune commande pour l'instant.</p>
-          <p className="mt-1 text-xs">Les commandes apparaîtront ici une fois Firebase connecté.</p>
-        </div>
+        {orders.length === 0 ? (
+          <div className="p-10 text-center text-muted-foreground text-sm">
+            <ShoppingBag size={32} className="mx-auto mb-3 opacity-30" />
+            <p>Aucune commande pour l'instant.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-muted/40 text-muted-foreground text-xs uppercase tracking-wide border-b border-border">
+                <tr>
+                  <th className="px-5 py-3">Commande</th>
+                  <th className="px-5 py-3 hidden md:table-cell">Date</th>
+                  <th className="px-5 py-3">Client</th>
+                  <th className="px-5 py-3 hidden sm:table-cell">Total</th>
+                  <th className="px-5 py-3">Statut</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {orders.slice(0, 8).map((order) => (
+                  <tr key={order.orderId} className="hover:bg-muted/20">
+                    <td className="px-5 py-3 font-mono text-xs font-semibold text-secondary">{order.orderId}</td>
+                    <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">{fmtDate(order.createdAt)}</td>
+                    <td className="px-5 py-3">{order.customer?.firstName} {order.customer?.lastName}</td>
+                    <td className="px-5 py-3 font-medium hidden sm:table-cell">{order.total.toFixed(2)} د.ت</td>
+                    <td className="px-5 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium border rounded-sm ${STATUS_COLORS[order.status] ?? ""}`}>
+                        {order.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -443,32 +502,217 @@ function ProductsTab() {
 
 /* ─────────────────── ORDERS TAB ─────────────────── */
 function OrdersTab() {
+  const [orders, setOrders] = React.useState<Order[]>([]);
+  const [expanded, setExpanded] = React.useState<string | null>(null);
+  const [updatingId, setUpdatingId] = React.useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = React.useState<OrderStatus | "Toutes">("Toutes");
+
+  React.useEffect(() => {
+    const unsub = subscribeToAllOrders(setOrders, (err) => console.error("[admin/orders]", err));
+    return unsub;
+  }, []);
+
+  const handleStatusChange = async (orderId: string, status: OrderStatus) => {
+    setUpdatingId(orderId);
+    try {
+      await updateOrderStatus(orderId, status);
+    } catch (err) {
+      console.error("[admin/orders] update failed:", err);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const displayed = filterStatus === "Toutes" ? orders : orders.filter((o) => o.status === filterStatus);
+
   return (
     <div>
-      <h2 className="text-2xl font-serif mb-6">Commandes</h2>
-      <div className="bg-background border border-border rounded-sm overflow-hidden">
-        <div className="p-10 text-center text-muted-foreground text-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+        <h2 className="text-2xl font-serif">
+          Commandes <span className="text-base text-muted-foreground font-sans">({orders.length})</span>
+        </h2>
+        {/* Filter */}
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value as OrderStatus | "Toutes")}
+          className="border border-input bg-background rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+        >
+          <option value="Toutes">Toutes les commandes</option>
+          {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+      </div>
+
+      {displayed.length === 0 ? (
+        <div className="bg-background border border-border rounded-sm p-10 text-center text-muted-foreground text-sm">
           <ShoppingBag size={40} className="mx-auto mb-4 opacity-25" />
           <p className="font-medium text-base text-foreground/60">Aucune commande</p>
-          <p className="mt-2 max-w-xs mx-auto">Les commandes passées par vos clients apparaîtront ici une fois Firebase connecté.</p>
         </div>
-      </div>
+      ) : (
+        <div className="bg-background border border-border rounded-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-muted/40 text-muted-foreground text-xs uppercase tracking-wide border-b border-border">
+                <tr>
+                  <th className="px-5 py-3">Commande</th>
+                  <th className="px-5 py-3 hidden md:table-cell">Date</th>
+                  <th className="px-5 py-3">Client</th>
+                  <th className="px-5 py-3 hidden sm:table-cell">Ville</th>
+                  <th className="px-5 py-3 hidden lg:table-cell">Total</th>
+                  <th className="px-5 py-3">Statut</th>
+                  <th className="px-5 py-3 text-right">Détails</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {displayed.map((order) => (
+                  <React.Fragment key={order.orderId}>
+                    <tr className="hover:bg-muted/20 transition-colors">
+                      <td className="px-5 py-3 font-mono text-xs font-semibold text-secondary">{order.orderId}</td>
+                      <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">{fmtDate(order.createdAt)}</td>
+                      <td className="px-5 py-3">
+                        <p className="font-medium">{order.customer?.firstName} {order.customer?.lastName}</p>
+                        <p className="text-xs text-muted-foreground">{order.customer?.phone}</p>
+                      </td>
+                      <td className="px-5 py-3 text-muted-foreground hidden sm:table-cell">{order.shipping?.city || "—"}</td>
+                      <td className="px-5 py-3 font-medium hidden lg:table-cell">{order.total.toFixed(2)} د.ت</td>
+                      <td className="px-5 py-3">
+                        <select
+                          value={order.status}
+                          disabled={updatingId === order.orderId}
+                          onChange={(e) => handleStatusChange(order.orderId, e.target.value as OrderStatus)}
+                          className={`text-xs font-medium border rounded-sm px-2 py-1 focus:outline-none cursor-pointer disabled:opacity-60 ${STATUS_COLORS[order.status] ?? ""}`}
+                        >
+                          {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <button
+                          onClick={() => setExpanded(expanded === order.orderId ? null : order.orderId)}
+                          className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                        >
+                          {expanded === order.orderId ? "Masquer" : "Voir"}
+                        </button>
+                      </td>
+                    </tr>
+                    {expanded === order.orderId && (
+                      <tr>
+                        <td colSpan={7} className="bg-muted/20 px-5 py-4 border-t border-border">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <p className="font-semibold text-xs uppercase tracking-widest text-muted-foreground mb-2">Articles</p>
+                              <div className="space-y-1.5">
+                                {order.items.map((item, i) => (
+                                  <div key={i} className="flex justify-between gap-4">
+                                    <span>{item.name}{item.variant ? ` (${item.variant})` : ""} × {item.quantity}</span>
+                                    <span className="font-medium shrink-0">{(item.price * item.quantity).toFixed(2)} د.ت</span>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="mt-3 pt-3 border-t border-border space-y-1 text-xs text-muted-foreground">
+                                <div className="flex justify-between"><span>Sous-total</span><span>{order.subtotal.toFixed(2)} د.ت</span></div>
+                                <div className="flex justify-between"><span>Livraison</span><span>{order.deliveryFee === 0 ? "Offerte" : `${order.deliveryFee.toFixed(2)} د.ت`}</span></div>
+                                {order.discount > 0 && <div className="flex justify-between text-emerald-600"><span>Réduction {order.couponCode && `(${order.couponCode})`}</span><span>−{order.discount.toFixed(2)} د.ت</span></div>}
+                                <div className="flex justify-between font-semibold text-foreground text-sm pt-1"><span>Total</span><span>{order.total.toFixed(2)} د.ت</span></div>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="font-semibold text-xs uppercase tracking-widest text-muted-foreground mb-2">Livraison</p>
+                              <p>{order.shipping?.address}</p>
+                              <p>{order.shipping?.postalCode} {order.shipping?.city}</p>
+                              {order.shipping?.instructions && <p className="text-muted-foreground italic mt-1">{order.shipping.instructions}</p>}
+                              <p className="mt-3 font-semibold text-xs uppercase tracking-widest text-muted-foreground mb-2">Contact</p>
+                              <p>{order.customer?.email}</p>
+                              <p>{order.customer?.phone}</p>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 /* ─────────────────── CLIENTS TAB ─────────────────── */
 function ClientsTab() {
+  const [clients, setClients] = React.useState<(CustomerProfile & { uid: string })[]>([]);
+  const [orders, setOrders] = React.useState<Order[]>([]);
+
+  React.useEffect(() => {
+    const unsubClients = subscribeToAllClients(setClients, (err) => console.error("[admin/clients]", err));
+    const unsubOrders = subscribeToAllOrders(setOrders, (err) => console.error("[admin/clients/orders]", err));
+    return () => { unsubClients(); unsubOrders(); };
+  }, []);
+
+  // Build per-client order stats
+  const statsByUid = React.useMemo(() => {
+    const map: Record<string, { count: number; total: number; last: string }> = {};
+    for (const o of orders) {
+      if (!o.userId) continue;
+      const s = map[o.userId] ?? { count: 0, total: 0, last: "" };
+      s.count += 1;
+      s.total += o.total;
+      if (!s.last || o.createdAt > s.last) s.last = o.createdAt;
+      map[o.userId] = s;
+    }
+    return map;
+  }, [orders]);
+
   return (
     <div>
-      <h2 className="text-2xl font-serif mb-6">Clients</h2>
-      <div className="bg-background border border-border rounded-sm overflow-hidden">
-        <div className="p-10 text-center text-muted-foreground text-sm">
+      <h2 className="text-2xl font-serif mb-6">
+        Clients <span className="text-base text-muted-foreground font-sans">({clients.length})</span>
+      </h2>
+      {clients.length === 0 ? (
+        <div className="bg-background border border-border rounded-sm p-10 text-center text-muted-foreground text-sm">
           <Users size={40} className="mx-auto mb-4 opacity-25" />
           <p className="font-medium text-base text-foreground/60">Aucun client enregistré</p>
-          <p className="mt-2 max-w-xs mx-auto">La liste des clients s'alimentera automatiquement lorsque des comptes seront créés sur la boutique.</p>
+          <p className="mt-2 max-w-xs mx-auto">Les profils s'afficheront ici dès qu'un client passera sa première commande.</p>
         </div>
-      </div>
+      ) : (
+        <div className="bg-background border border-border rounded-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-muted/40 text-muted-foreground text-xs uppercase tracking-wide border-b border-border">
+                <tr>
+                  <th className="px-5 py-3">Nom</th>
+                  <th className="px-5 py-3 hidden md:table-cell">Téléphone</th>
+                  <th className="px-5 py-3 hidden lg:table-cell">Ville</th>
+                  <th className="px-5 py-3 hidden sm:table-cell">Commandes</th>
+                  <th className="px-5 py-3 hidden xl:table-cell">Total dépensé</th>
+                  <th className="px-5 py-3 hidden xl:table-cell">Dernière commande</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {clients.map((client) => {
+                  const stats = statsByUid[client.uid];
+                  return (
+                    <tr key={client.uid} className="hover:bg-muted/20 transition-colors">
+                      <td className="px-5 py-3">
+                        <p className="font-medium">{client.firstName} {client.lastName}</p>
+                      </td>
+                      <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">{client.phone || "—"}</td>
+                      <td className="px-5 py-3 text-muted-foreground hidden lg:table-cell">{client.city || "—"}</td>
+                      <td className="px-5 py-3 hidden sm:table-cell">{stats?.count ?? 0}</td>
+                      <td className="px-5 py-3 font-medium hidden xl:table-cell">
+                        {stats ? `${stats.total.toFixed(2)} د.ت` : "—"}
+                      </td>
+                      <td className="px-5 py-3 text-muted-foreground hidden xl:table-cell">
+                        {stats?.last ? fmtDate(stats.last) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

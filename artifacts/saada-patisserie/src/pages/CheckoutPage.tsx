@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useCartStore } from "@/store/cartStore";
 import { usePromoStore } from "@/store/promoStore";
 import { useAuthStore } from "@/store/authStore";
-import { getUserProfile, saveUserProfile, type Coupon } from "@/lib/firestore";
+import { getUserProfile, saveUserProfile, saveOrder, type Coupon, type OrderItem } from "@/lib/firestore";
 
 /* ── Stepper ── */
 function Stepper({ step }: { step: number }) {
@@ -196,23 +196,45 @@ export default function CheckoutPage() {
   };
 
   const handleConfirmOrder = async () => {
-    // Save contact info to Firestore profile for future orders
+    const orderId = "CMD" + Date.now().toString().slice(-8);
+
+    // Build order items from cart
+    const orderItems: OrderItem[] = items.map((item) => ({
+      productId: item.productId,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      image: item.image,
+      ...(item.variant ? { variant: item.variant } : {}),
+    }));
+
+    // Save order to Firestore
     if (user) {
       try {
-        await saveUserProfile(user.uid, {
-          firstName,
-          lastName,
-          phone,
-          address,
-          postalCode,
-          city,
+        await saveOrder({
+          orderId,
+          userId: user.uid,
+          userEmail: email,
+          status: "En attente",
+          createdAt: new Date().toISOString(),
+          items: orderItems,
+          subtotal: total,
+          deliveryFee,
+          discount,
+          couponCode: appliedCoupon?.code ?? "",
+          total: finalTotal,
+          customer: { firstName, lastName, email, phone },
+          shipping: { address, postalCode, city, instructions },
         });
+        // Also save/update the customer profile
+        await saveUserProfile(user.uid, { firstName, lastName, phone, address, postalCode, city });
       } catch (err) {
-        console.error("[checkout] Failed to save profile:", err);
+        console.error("[checkout] Failed to save order:", err);
       }
     }
+
     clearCart();
-    setLocation("/commande/confirmation");
+    setLocation(`/commande/confirmation?id=${orderId}`);
   };
 
   return (

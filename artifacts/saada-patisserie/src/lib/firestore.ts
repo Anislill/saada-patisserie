@@ -1,6 +1,6 @@
 import {
   collection, doc, setDoc, deleteDoc, onSnapshot,
-  getDocs, getDoc, query,
+  getDocs, getDoc, query, where, orderBy,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -343,6 +343,90 @@ export async function saveUserProfile(uid: string, profile: Partial<CustomerProf
     Object.entries(profile).filter(([, v]) => v !== undefined && v !== null)
   );
   await setDoc(doc(db, 'users', uid), clean, { merge: true });
+}
+
+// ─────────────────── Orders ─────────────────────────────
+
+export type OrderStatus = "En attente" | "En préparation" | "Expédiée" | "Livrée" | "Annulée";
+
+export interface OrderItem {
+  productId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  image: string;
+  variant?: string;
+}
+
+export interface Order {
+  orderId: string;
+  userId: string | null;
+  userEmail: string;
+  status: OrderStatus;
+  createdAt: string;
+  items: OrderItem[];
+  subtotal: number;
+  deliveryFee: number;
+  discount: number;
+  couponCode: string;
+  total: number;
+  customer: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  };
+  shipping: {
+    address: string;
+    postalCode: string;
+    city: string;
+    instructions: string;
+  };
+}
+
+export async function saveOrder(order: Order): Promise<void> {
+  const { orderId, ...data } = order;
+  const clean = Object.fromEntries(
+    Object.entries(data).filter(([, v]) => v !== undefined)
+  );
+  await setDoc(doc(db, 'orders', orderId), clean);
+}
+
+/** Fetch all orders for a given user, sorted newest-first (client-side sort avoids composite index). */
+export async function getUserOrders(uid: string): Promise<Order[]> {
+  const q = query(collection(db, 'orders'), where('userId', '==', uid));
+  const snap = await getDocs(q);
+  const orders = snap.docs.map((d) => ({ orderId: d.id, ...d.data() } as Order));
+  return orders.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+/** Real-time listener for all orders — admin only. */
+export function subscribeToAllOrders(
+  callback: (orders: Order[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+  return onSnapshot(
+    q,
+    (snap) => callback(snap.docs.map((d) => ({ orderId: d.id, ...d.data() } as Order))),
+    (err) => onError?.(err as Error)
+  );
+}
+
+export async function updateOrderStatus(orderId: string, status: OrderStatus): Promise<void> {
+  await setDoc(doc(db, 'orders', orderId), { status }, { merge: true });
+}
+
+/** Real-time listener for all customer profiles — admin only. */
+export function subscribeToAllClients(
+  callback: (clients: (CustomerProfile & { uid: string; email?: string })[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  return onSnapshot(
+    collection(db, 'users'),
+    (snap) => callback(snap.docs.map((d) => ({ uid: d.id, ...d.data() } as CustomerProfile & { uid: string }))),
+    (err) => onError?.(err as Error)
+  );
 }
 
 // ─────────────────── Seeding ────────────────────────────
