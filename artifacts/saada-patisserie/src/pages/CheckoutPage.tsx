@@ -101,14 +101,14 @@ function NavButtons({
           Retour
         </button>
       )}
-      <Button
+      <button
         type="submit"
         disabled={disabled}
-        className="flex-1 sm:flex-none sm:ml-auto h-11 px-7 rounded-full bg-[#1F3D2E] text-white text-sm font-semibold tracking-wide shadow-md hover:shadow-lg hover:bg-[#16301f] active:scale-[0.98] transition-all duration-200"
+        className="flex-1 sm:flex-none sm:ml-auto h-11 px-5 sm:px-7 rounded-full bg-[#1F3D2E] text-white text-xs sm:text-sm font-semibold tracking-normal shadow-md hover:shadow-lg hover:bg-[#16301f] active:scale-[0.98] transition-all duration-200 flex items-center justify-center disabled:opacity-60"
       >
-        {submitLabel}
-        <ChevronRight size={16} className="ml-2" />
-      </Button>
+        <span className="truncate">{submitLabel}</span>
+        <ChevronRight size={15} className="ml-2 shrink-0" />
+      </button>
     </div>
   );
 }
