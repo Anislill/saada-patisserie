@@ -2,7 +2,7 @@ import * as React from "react";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Facebook, Instagram, Twitter } from "lucide-react";
-import logoPath from "@assets/0_file_00000000873481f494288e53319f68ef-removebg-preview_1785313194757.png";
+import logoPath from "@assets/logo-white.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -17,7 +17,7 @@ export default function Footer() {
           {/* Brand Info */}
           <div className="flex flex-col items-center md:items-start">
             <div className="mb-6">
-              <img src={logoPath} alt="Saada Pâtisserie" className="h-20 object-contain" />
+              <img src={logoPath} alt="Saada Pâtisserie" className="h-28 object-contain" />
             </div>
             <p className="text-primary-foreground/80 font-serif italic mb-6 text-center md:text-left">
               {t('footer.tagline')}
