@@ -17,7 +17,7 @@ export default function Footer() {
           {/* Brand Info */}
           <div className="flex flex-col items-center md:items-start">
             <div className="mb-6">
-              <img src={logoPath} alt="Saada Pâtisserie" className="h-28 object-contain" />
+              <img src={logoPath} alt="Saada Pâtisserie" className="h-35 object-contain" />
             </div>
             <p className="text-primary-foreground/80 font-serif italic mb-6 text-center md:text-left">
               {t('footer.tagline')}
