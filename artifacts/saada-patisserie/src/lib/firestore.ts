@@ -321,6 +321,30 @@ export async function toggleCouponInFirestore(id: string, active: boolean): Prom
   await setDoc(doc(db, 'coupons', id), { active }, { merge: true });
 }
 
+// ─────────────────── Customer Profile ──────────────────
+
+export interface CustomerProfile {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  address: string;
+  postalCode: string;
+  city: string;
+}
+
+export async function getUserProfile(uid: string): Promise<CustomerProfile | null> {
+  const snap = await getDoc(doc(db, 'users', uid));
+  if (!snap.exists()) return null;
+  return snap.data() as CustomerProfile;
+}
+
+export async function saveUserProfile(uid: string, profile: Partial<CustomerProfile>): Promise<void> {
+  const clean = Object.fromEntries(
+    Object.entries(profile).filter(([, v]) => v !== undefined && v !== null)
+  );
+  await setDoc(doc(db, 'users', uid), clean, { merge: true });
+}
+
 // ─────────────────── Seeding ────────────────────────────
 
 let _seedingInProgress = false;

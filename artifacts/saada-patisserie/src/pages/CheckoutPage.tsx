@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCartStore } from "@/store/cartStore";
 import { usePromoStore } from "@/store/promoStore";
-import type { Coupon } from "@/lib/firestore";
+import { useAuthStore } from "@/store/authStore";
+import { getUserProfile, saveUserProfile, type Coupon } from "@/lib/firestore";
 
 /* ── Stepper ── */
 function Stepper({ step }: { step: number }) {
@@ -118,8 +119,36 @@ export default function CheckoutPage() {
   const [, setLocation] = useLocation();
   const { items, getTotal, clearCart } = useCartStore();
   const { coupons } = usePromoStore();
+  const { user } = useAuthStore();
 
   const [step, setStep] = React.useState(1);
+
+  /* ── Form state ── */
+  const [firstName, setFirstName] = React.useState("");
+  const [lastName, setLastName] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [phone, setPhone] = React.useState("");
+  const [address, setAddress] = React.useState("");
+  const [postalCode, setPostalCode] = React.useState("");
+  const [city, setCity] = React.useState("");
+  const [instructions, setInstructions] = React.useState("");
+
+  /* ── Pre-fill from Firestore when user is logged in ── */
+  React.useEffect(() => {
+    if (!user) return;
+    // Pre-fill email from Firebase Auth immediately
+    setEmail(user.email ?? "");
+    // Load saved profile
+    getUserProfile(user.uid).then((profile) => {
+      if (!profile) return;
+      if (profile.firstName) setFirstName(profile.firstName);
+      if (profile.lastName) setLastName(profile.lastName);
+      if (profile.phone) setPhone(profile.phone);
+      if (profile.address) setAddress(profile.address);
+      if (profile.postalCode) setPostalCode(profile.postalCode);
+      if (profile.city) setCity(profile.city);
+    });
+  }, [user]);
 
   /* Coupon */
   const [couponInput, setCouponInput] = React.useState("");
@@ -166,7 +195,22 @@ export default function CheckoutPage() {
     setCouponError("");
   };
 
-  const handleConfirmOrder = () => {
+  const handleConfirmOrder = async () => {
+    // Save contact info to Firestore profile for future orders
+    if (user) {
+      try {
+        await saveUserProfile(user.uid, {
+          firstName,
+          lastName,
+          phone,
+          address,
+          postalCode,
+          city,
+        });
+      } catch (err) {
+        console.error("[checkout] Failed to save profile:", err);
+      }
+    }
     clearCart();
     setLocation("/commande/confirmation");
   };
@@ -198,16 +242,42 @@ export default function CheckoutPage() {
                   <h2 className="text-xl font-serif text-[#0F0E0D] mb-8">Vos informations</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <Field label="Prénom" required>
-                      <input className={inputCls} required placeholder="Prénom" />
+                      <input
+                        className={inputCls}
+                        required
+                        placeholder="Prénom"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                      />
                     </Field>
                     <Field label="Nom" required>
-                      <input className={inputCls} required placeholder="Nom" />
+                      <input
+                        className={inputCls}
+                        required
+                        placeholder="Nom"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                      />
                     </Field>
                     <Field label="Email" required span2>
-                      <input className={inputCls} type="email" required placeholder="vous@exemple.com" />
+                      <input
+                        className={inputCls}
+                        type="email"
+                        required
+                        placeholder="vous@exemple.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
                     </Field>
                     <Field label="Téléphone" required span2>
-                      <input className={inputCls} type="tel" required placeholder="+216 XX XXX XXX" />
+                      <input
+                        className={inputCls}
+                        type="tel"
+                        required
+                        placeholder="+216 XX XXX XXX"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                      />
                     </Field>
                   </div>
                   <NavButtons submitLabel="Continuer vers la livraison" />
@@ -246,18 +316,41 @@ export default function CheckoutPage() {
 
                   <div className="space-y-5">
                     <Field label="Adresse" required>
-                      <input className={inputCls} required placeholder="Numéro et nom de rue" />
+                      <input
+                        className={inputCls}
+                        required
+                        placeholder="Numéro et nom de rue"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                      />
                     </Field>
                     <div className="grid grid-cols-2 gap-5">
                       <Field label="Code Postal" required>
-                        <input className={inputCls} required placeholder="Ex: 1000" />
+                        <input
+                          className={inputCls}
+                          required
+                          placeholder="Ex: 1000"
+                          value={postalCode}
+                          onChange={(e) => setPostalCode(e.target.value)}
+                        />
                       </Field>
                       <Field label="Ville" required>
-                        <input className={inputCls} required placeholder="Ex: Tunis" />
+                        <input
+                          className={inputCls}
+                          required
+                          placeholder="Ex: Tunis"
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                        />
                       </Field>
                     </div>
                     <Field label="Instructions (optionnel)">
-                      <input className={inputCls} placeholder="Code porte, étage, indications..." />
+                      <input
+                        className={inputCls}
+                        placeholder="Code porte, étage, indications..."
+                        value={instructions}
+                        onChange={(e) => setInstructions(e.target.value)}
+                      />
                     </Field>
                   </div>
 
