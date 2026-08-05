@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useLocation } from "wouter";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { adminAuth } from "@/lib/firebase";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ export default function AdminLoginPage() {
     setLocalLoading(true);
 
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const cred = await signInWithEmailAndPassword(adminAuth, email, password);
       // Update store immediately so AdminLayout renders without waiting
       // for the global onAuthStateChanged to fire
       setUser(cred.user);

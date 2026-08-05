@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
@@ -18,6 +18,15 @@ const firebaseConfig = {
   appId:             clean(import.meta.env.VITE_FIREBASE_APP_ID),
 };
 
+// Primary app — used by customers (auth + Firestore)
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Secondary app — used exclusively by admin login so admin sessions
+// never overwrite the customer's Firebase auth state in the store.
+const adminAppName = 'admin-app';
+export const adminApp =
+  getApps().find((a) => a.name === adminAppName) ??
+  initializeApp(firebaseConfig, adminAppName);
+export const adminAuth = getAuth(adminApp);
