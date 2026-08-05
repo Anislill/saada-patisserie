@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Link, useRoute } from "wouter";
 import { useTranslation } from "react-i18next";
-import { Heart, Truck, ShieldCheck, ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react";
+import { Heart, Truck, ShieldCheck, Clock, ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { SectionReveal } from "@/components/SectionReveal";
 import { ProductCard } from "@/components/ProductCard";
@@ -222,6 +222,21 @@ export default function ProductDetailPage() {
                 <ShieldCheck size={20} className="text-secondary" />
                 <span className="text-sm font-medium">Paiement Sécurisé</span>
               </div>
+              {product.prepTime && (
+                <div className="flex items-center gap-3 col-span-2">
+                  <Clock size={20} className="text-secondary shrink-0" />
+                  <span className="text-sm font-medium">
+                    Délai de préparation :{" "}
+                    <span className="text-muted-foreground font-normal">
+                      {product.prepTime.value}{" "}
+                      {product.prepTime.unit === "hours"
+                        ? `heure${product.prepTime.value > 1 ? "s" : ""}`
+                        : `jour${product.prepTime.value > 1 ? "s" : ""}`}{" "}
+                      minimum
+                    </span>
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Tabs */}

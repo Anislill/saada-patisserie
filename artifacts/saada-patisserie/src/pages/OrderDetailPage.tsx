@@ -2,7 +2,7 @@ import * as React from "react";
 import { useLocation, Link } from "wouter";
 import {
   Clock, CheckCircle2, Package, Truck, XCircle,
-  MapPin, ChevronLeft, ShoppingBag,
+  MapPin, CalendarDays, ChevronLeft, ShoppingBag,
 } from "lucide-react";
 import { AccountLayout } from "@/components/layout/AccountLayout";
 import { Button } from "@/components/ui/button";
@@ -397,38 +397,61 @@ export default function OrderDetailPage({ params }: { params?: { orderId?: strin
           </div>
         </div>
 
-        {/* ── Shipping address ── */}
-        {order.shipping?.address && (
-          <div className="border border-border bg-background px-6 py-5 flex items-start gap-4">
-            <div className="w-9 h-9 bg-secondary/8 border border-secondary/20 flex items-center justify-center shrink-0">
-              <MapPin size={14} className="text-secondary" />
-            </div>
-            <div>
-              <p className="text-[10px] font-sans uppercase tracking-[0.3em] text-muted-foreground mb-2">
-                Adresse de livraison
-              </p>
-              <p className="text-sm font-medium text-foreground font-serif">
-                {order.customer?.firstName} {order.customer?.lastName}
-              </p>
-              <p className="text-sm text-muted-foreground font-sans mt-0.5">
-                {order.shipping.address}
-              </p>
-              <p className="text-sm text-muted-foreground font-sans">
-                {order.shipping.postalCode} {order.shipping.city}
-              </p>
-              {order.shipping.instructions && (
-                <p className="text-xs text-muted-foreground/70 mt-2 italic font-sans leading-relaxed">
-                  {order.shipping.instructions}
+        {/* ── Requested date + Shipping address ── */}
+        <div className="flex flex-col gap-4">
+
+          {/* Requested date */}
+          {order.requestedDate && (
+            <div className="border border-secondary/25 bg-secondary/5 px-6 py-5 flex items-start gap-4">
+              <div className="w-9 h-9 bg-secondary/10 border border-secondary/20 flex items-center justify-center shrink-0">
+                <CalendarDays size={14} className="text-secondary" />
+              </div>
+              <div>
+                <p className="text-[10px] font-sans uppercase tracking-[0.3em] text-muted-foreground mb-1.5">
+                  Date de réception souhaitée
                 </p>
-              )}
-              {order.customer?.phone && (
-                <p className="text-xs text-muted-foreground font-sans mt-1.5 tracking-wide">
-                  {order.customer.phone}
+                <p className="text-base font-serif text-foreground">
+                  {new Date(order.requestedDate).toLocaleDateString("fr-FR", {
+                    weekday: "long", day: "numeric", month: "long", year: "numeric",
+                  })}
                 </p>
-              )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Shipping address */}
+          {order.shipping?.address && (
+            <div className="border border-border bg-background px-6 py-5 flex items-start gap-4">
+              <div className="w-9 h-9 bg-secondary/8 border border-secondary/20 flex items-center justify-center shrink-0">
+                <MapPin size={14} className="text-secondary" />
+              </div>
+              <div>
+                <p className="text-[10px] font-sans uppercase tracking-[0.3em] text-muted-foreground mb-2">
+                  Adresse de livraison
+                </p>
+                <p className="text-sm font-medium text-foreground font-serif">
+                  {order.customer?.firstName} {order.customer?.lastName}
+                </p>
+                <p className="text-sm text-muted-foreground font-sans mt-0.5">
+                  {order.shipping.address}
+                </p>
+                <p className="text-sm text-muted-foreground font-sans">
+                  {order.shipping.postalCode} {order.shipping.city}
+                </p>
+                {order.shipping.instructions && (
+                  <p className="text-xs text-muted-foreground/70 mt-2 italic font-sans leading-relaxed">
+                    {order.shipping.instructions}
+                  </p>
+                )}
+                {order.customer?.phone && (
+                  <p className="text-xs text-muted-foreground font-sans mt-1.5 tracking-wide">
+                    {order.customer.phone}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
       </div>
     </AccountLayout>

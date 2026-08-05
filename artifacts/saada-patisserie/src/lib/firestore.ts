@@ -34,6 +34,12 @@ export function getQtyDisplay(qty: number, unit?: PricingUnit): string {
   return `${qty}`;
 }
 
+/** Minimum preparation time set per-product by the admin */
+export interface PrepTime {
+  value: number;
+  unit: 'hours' | 'days';
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -51,6 +57,8 @@ export interface Product {
   pricingUnit?: PricingUnit;
   video?: string;
   variants?: { size?: string[]; flavor?: string[] };
+  /** Minimum lead time before the order can be received / delivered */
+  prepTime?: PrepTime;
 }
 
 export const SEED_PRODUCTS: Product[] = [
@@ -382,6 +390,8 @@ export interface Order {
     city: string;
     instructions: string;
   };
+  /** Date chosen by the customer for delivery/pickup (ISO date string YYYY-MM-DD) */
+  requestedDate?: string;
 }
 
 /** Recursively remove undefined values so Firestore never rejects the write. */

@@ -2,7 +2,7 @@ import * as React from "react";
 import { useLocation } from "wouter";
 import { useAuthStore } from "@/store/authStore";
 import {
-  SEED_CATEGORIES, Product, PricingUnit, Coupon,
+  SEED_CATEGORIES, Product, PricingUnit, PrepTime, Coupon,
   uploadBase64ToStorage, uploadFileToStorage,
   subscribeToAllOrders, subscribeToAllClients, updateOrderStatus,
   type Order, type OrderStatus, type CustomerProfile,
@@ -251,6 +251,7 @@ function ProductsTab() {
       isFeatured: form.isFeatured ?? false,
       pricingUnit: form.pricingUnit,
       video: form.video,
+      ...(form.prepTime?.value ? { prepTime: form.prepTime } : {}),
     };
     setSaving(true);
     try {
@@ -464,6 +465,53 @@ function ProductsTab() {
                 )}
               </div>
 
+              {/* Prep time */}
+              <div>
+                <label className="text-sm font-medium block mb-1.5">
+                  Délai de préparation minimum{" "}
+                  <span className="text-muted-foreground font-normal text-xs">(affiché sur la page produit)</span>
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="Ex: 24"
+                    value={form.prepTime?.value ?? ""}
+                    onChange={e => {
+                      const v = Number(e.target.value);
+                      setForm(f => ({
+                        ...f,
+                        prepTime: v > 0
+                          ? { value: v, unit: f.prepTime?.unit ?? 'hours' }
+                          : undefined,
+                      }));
+                    }}
+                    className="w-28"
+                  />
+                  <div className="flex gap-1">
+                    {(['hours', 'days'] as const).map(unit => (
+                      <button
+                        key={unit}
+                        type="button"
+                        onClick={() => setForm(f => ({
+                          ...f,
+                          prepTime: f.prepTime?.value
+                            ? { value: f.prepTime.value, unit }
+                            : undefined,
+                        }))}
+                        className={`px-3 py-2 border rounded-sm text-sm font-medium transition-colors ${
+                          (form.prepTime?.unit ?? 'hours') === unit && form.prepTime?.value
+                            ? 'border-secondary bg-secondary/5 text-secondary'
+                            : 'border-border hover:border-secondary/50 text-foreground'
+                        }`}
+                      >
+                        {unit === 'hours' ? 'Heures' : 'Jours'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               {/* Checkboxes */}
               <div className="space-y-3 pt-1">
                 <label className="flex items-center gap-3 cursor-pointer">
@@ -619,6 +667,14 @@ function OrdersTab() {
                               <p>{order.shipping?.address}</p>
                               <p>{order.shipping?.postalCode} {order.shipping?.city}</p>
                               {order.shipping?.instructions && <p className="text-muted-foreground italic mt-1">{order.shipping.instructions}</p>}
+                              {order.requestedDate && (
+                                <div className="mt-3 pt-3 border-t border-border">
+                                  <p className="font-semibold text-xs uppercase tracking-widest text-muted-foreground mb-1">Date souhaitée</p>
+                                  <p className="font-medium text-secondary">
+                                    {new Date(order.requestedDate).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                                  </p>
+                                </div>
+                              )}
                               <p className="mt-3 font-semibold text-xs uppercase tracking-widest text-muted-foreground mb-2">Contact</p>
                               <p>{order.customer?.email}</p>
                               <p>{order.customer?.phone}</p>

@@ -8,6 +8,7 @@ import { useCartStore } from "@/store/cartStore";
 import { usePromoStore } from "@/store/promoStore";
 import { useAuthStore } from "@/store/authStore";
 import { getUserProfile, saveUserProfile, saveOrder, type Coupon, type OrderItem } from "@/lib/firestore";
+import { useProductStore } from "@/store/productStore";
 
 /* ── Stepper ── */
 function Stepper({ step }: { step: number }) {
@@ -122,6 +123,7 @@ export default function CheckoutPage() {
   const { user } = useAuthStore();
 
   const [step, setStep] = React.useState(1);
+  const products = useProductStore((s) => s.products);
 
   /* ── Form state ── */
   const [firstName, setFirstName] = React.useState("");
@@ -132,6 +134,47 @@ export default function CheckoutPage() {
   const [postalCode, setPostalCode] = React.useState("");
   const [city, setCity] = React.useState("");
   const [instructions, setInstructions] = React.useState("");
+  const [requestedDate, setRequestedDate] = React.useState("");
+
+  /* ── Minimum allowed delivery date (based on max prepTime across cart items) ── */
+  const minDate = React.useMemo(() => {
+    let maxHours = 0;
+    for (const cartItem of items) {
+      const product = products.find((p) => p.id === cartItem.productId);
+      if (product?.prepTime) {
+        const hours =
+          product.prepTime.unit === "days"
+            ? product.prepTime.value * 24
+            : product.prepTime.value;
+        if (hours > maxHours) maxHours = hours;
+      }
+    }
+    if (maxHours === 0) return "";
+    const d = new Date();
+    d.setHours(d.getHours() + maxHours);
+    return d.toISOString().split("T")[0];
+  }, [items, products]);
+
+  /* ── Human-readable prep time label for the hint ── */
+  const prepTimeLabel = React.useMemo(() => {
+    let maxHours = 0;
+    for (const cartItem of items) {
+      const product = products.find((p) => p.id === cartItem.productId);
+      if (product?.prepTime) {
+        const hours =
+          product.prepTime.unit === "days"
+            ? product.prepTime.value * 24
+            : product.prepTime.value;
+        if (hours > maxHours) maxHours = hours;
+      }
+    }
+    if (maxHours === 0) return null;
+    if (maxHours % 24 === 0) {
+      const days = maxHours / 24;
+      return `${days} jour${days > 1 ? "s" : ""}`;
+    }
+    return `${maxHours} heure${maxHours > 1 ? "s" : ""}`;
+  }, [items, products]);
 
   /* ── Pre-fill from Firestore when user is logged in ── */
   React.useEffect(() => {
@@ -225,6 +268,7 @@ export default function CheckoutPage() {
           total: finalTotal,
           customer: { firstName, lastName, email, phone },
           shipping: { address, postalCode, city, instructions },
+          ...(requestedDate ? { requestedDate } : {}),
         });
         // Also save/update the customer profile
         await saveUserProfile(user.uid, { firstName, lastName, phone, address, postalCode, city });
@@ -373,6 +417,23 @@ export default function CheckoutPage() {
                         value={instructions}
                         onChange={(e) => setInstructions(e.target.value)}
                       />
+                    </Field>
+
+                    {/* ── Requested delivery date ── */}
+                    <Field label="Date de réception souhaitée" required={!!minDate}>
+                      <input
+                        className={inputCls}
+                        type="date"
+                        required={!!minDate}
+                        min={minDate || undefined}
+                        value={requestedDate}
+                        onChange={(e) => setRequestedDate(e.target.value)}
+                      />
+                      {prepTimeLabel && (
+                        <p className="mt-1.5 text-[11px] text-[#0F0E0D]/45 font-sans">
+                          ⏱ Délai de préparation minimum : <strong>{prepTimeLabel}</strong>. Les dates antérieures ne sont pas disponibles.
+                        </p>
+                      )}
                     </Field>
                   </div>
 
