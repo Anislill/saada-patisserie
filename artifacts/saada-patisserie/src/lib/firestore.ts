@@ -415,6 +415,19 @@ export async function getUserOrders(uid: string): Promise<Order[]> {
   return orders.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+/** Real-time listener for a single order by ID — used for live tracking. */
+export function subscribeToOrder(
+  orderId: string,
+  callback: (order: Order | null) => void,
+  onError?: (err: Error) => void
+): () => void {
+  return onSnapshot(
+    doc(db, 'orders', orderId),
+    (snap) => callback(snap.exists() ? ({ orderId: snap.id, ...snap.data() } as Order) : null),
+    (err) => onError?.(err as Error)
+  );
+}
+
 /** Real-time listener for all orders — admin only.
  *  Uses adminDb so the admin's auth token is sent with the request.
  *  No orderBy to avoid needing a Firestore index; sorted client-side. */

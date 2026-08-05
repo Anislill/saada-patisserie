@@ -14,6 +14,7 @@ import CartPage from '@/pages/CartPage';
 import CheckoutPage from '@/pages/CheckoutPage';
 import OrderConfirmationPage from '@/pages/OrderConfirmationPage';
 import OrderTrackingPage from '@/pages/OrderTrackingPage';
+import OrderDetailPage from '@/pages/OrderDetailPage';
 import AuthPage from '@/pages/AuthPage';
 import ProfilePage from '@/pages/ProfilePage';
 import MyOrdersPage from '@/pages/MyOrdersPage';
@@ -69,6 +70,7 @@ function Router() {
       <Route path="/commande" component={CheckoutPage} />
       <Route path="/commande/confirmation" component={OrderConfirmationPage} />
       <Route path="/suivi-commande" component={OrderTrackingPage} />
+      <Route path="/compte/commandes/:orderId" component={OrderDetailPage} />
       <Route path="/compte" component={AuthPage} />
       <Route path="/compte/profil" component={ProfilePage} />
       <Route path="/compte/commandes" component={MyOrdersPage} />

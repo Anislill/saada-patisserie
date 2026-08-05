@@ -136,7 +136,7 @@ export default function MyOrdersPage() {
                     </div>
 
                     {/* Track button */}
-                    <Link href={`/suivi-commande?id=${order.orderId}`} className="shrink-0">
+                    <Link href={`/compte/commandes/${order.orderId}`} className="shrink-0">
                       <Button variant="outline" size="sm" className="gap-1.5">
                         Suivre
                         <ChevronRight size={14} />
