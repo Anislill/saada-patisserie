@@ -4,14 +4,30 @@ import { LogOut, User, ShoppingBag, Heart } from "lucide-react";
 import Layout from "@/components/layout/Layout";
 import { useAuthStore } from "@/store/authStore";
 
-export function AccountLayout({ children, activeTab }: { children: React.ReactNode, activeTab: string }) {
+/* Thin gold ornament — same motif as the auth page */
+function GoldOrnament() {
+  return (
+    <svg width="80" height="10" viewBox="0 0 80 10" fill="none" aria-hidden>
+      <line x1="0" y1="5" x2="30" y2="5" stroke="#C9A867" strokeWidth="0.75" />
+      <circle cx="40" cy="5" r="3" stroke="#C9A867" strokeWidth="0.75" />
+      <circle cx="40" cy="5" r="1.2" fill="#C9A867" />
+      <line x1="50" y1="5" x2="80" y2="5" stroke="#C9A867" strokeWidth="0.75" />
+    </svg>
+  );
+}
+
+export function AccountLayout({
+  children,
+  activeTab,
+}: {
+  children: React.ReactNode;
+  activeTab: string;
+}) {
   const [, setLocation] = useLocation();
   const { user, setUser } = useAuthStore();
 
   React.useEffect(() => {
-    if (!user) {
-      setLocation("/compte");
-    }
+    if (!user) setLocation("/compte");
   }, [user, setLocation]);
 
   const handleLogout = () => {
@@ -22,73 +38,96 @@ export function AccountLayout({ children, activeTab }: { children: React.ReactNo
   if (!user) return null;
 
   const tabs = [
-    { id: "profil", label: "Mon Profil", icon: User, path: "/compte/profil" },
-    { id: "commandes", label: "Mes Commandes", icon: ShoppingBag, path: "/compte/commandes" },
-    { id: "favoris", label: "Mes Favoris", icon: Heart, path: "/compte/favoris" },
+    { id: "profil",    label: "Mon Profil",      icon: User,        path: "/compte/profil" },
+    { id: "commandes", label: "Mes Commandes",    icon: ShoppingBag, path: "/compte/commandes" },
+    { id: "favoris",   label: "Mes Favoris",      icon: Heart,       path: "/compte/favoris" },
   ];
 
-  const initials = (() => {
-    const name = user?.displayName ?? "";
-    const parts = name.trim().split(" ").filter(Boolean);
-    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (user?.email?.[0] ?? "C").toUpperCase();
-  })();
+  const firstName = user?.displayName?.split(" ")[0] || "Client";
 
   return (
     <Layout>
-      {/* Page header */}
-      <div className="bg-muted/30 border-b border-border">
-        <div className="container mx-auto px-4 md:px-8 py-10">
-          <div className="flex items-center gap-5">
-            {/* Avatar */}
-            <div className="w-14 h-14 rounded-full bg-secondary/15 border border-secondary/25 flex items-center justify-center shrink-0">
-              <span className="text-lg font-serif font-medium text-secondary tracking-wide">{initials}</span>
-            </div>
-            <div>
-              <p className="text-xs font-medium tracking-widest text-muted-foreground uppercase mb-1">Mon Compte</p>
-              <h1 className="text-2xl md:text-3xl font-serif text-foreground leading-none">
-                {user?.displayName || "Client"}
-              </h1>
-              {user?.email && (
-                <p className="text-sm text-muted-foreground mt-1">{user.email}</p>
-              )}
-            </div>
+      {/* ── Luxury masthead ─────────────────────────────────── */}
+      <div className="relative bg-primary overflow-hidden">
+        {/* Diagonal texture overlay */}
+        <div
+          className="absolute inset-0 opacity-[0.035]"
+          style={{
+            backgroundImage: `repeating-linear-gradient(
+              45deg,
+              #C9A867 0px, #C9A867 1px,
+              transparent 1px, transparent 14px
+            )`,
+          }}
+        />
+
+        {/* Corner marks */}
+        <div className="absolute top-5 left-6 w-8 h-8 border-t border-l border-secondary/30" />
+        <div className="absolute top-5 right-6 w-8 h-8 border-t border-r border-secondary/30" />
+        <div className="absolute bottom-5 left-6 w-8 h-8 border-b border-l border-secondary/30" />
+        <div className="absolute bottom-5 right-6 w-8 h-8 border-b border-r border-secondary/30" />
+
+        <div className="relative container mx-auto px-8 md:px-12 py-10 md:py-14 text-center">
+          {/* Label */}
+          <p className="text-secondary/70 text-[10px] font-sans tracking-[0.4em] uppercase mb-4">
+            Mon Espace Personnel
+          </p>
+
+          {/* Name */}
+          <h1 className="text-primary-foreground font-serif text-3xl md:text-5xl leading-tight mb-5">
+            Bonjour,&nbsp;
+            <span className="italic text-secondary">{firstName}</span>
+          </h1>
+
+          {/* Ornament */}
+          <div className="flex justify-center">
+            <GoldOrnament />
           </div>
+
+          {/* Email — subtle */}
+          {user?.email && (
+            <p className="text-primary-foreground/40 text-xs font-sans tracking-wide mt-4">
+              {user.email}
+            </p>
+          )}
         </div>
+
+        {/* Bottom gold hairline */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-secondary/25" />
       </div>
 
+      {/* ── Page body ───────────────────────────────────────── */}
       <div className="container mx-auto px-4 md:px-8 py-10">
         <div className="flex flex-col md:flex-row gap-10">
 
           {/* Sidebar */}
-          <aside className="w-full md:w-56 shrink-0">
+          <aside className="w-full md:w-52 shrink-0">
             <nav className="flex flex-col">
-              {tabs.map(tab => {
+              {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
                   <Link
                     key={tab.id}
                     href={tab.path}
-                    className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-md transition-all mb-0.5 ${
+                    className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all mb-0.5 ${
                       isActive
-                        ? "bg-secondary/10 text-secondary"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        ? "text-secondary border-l-2 border-secondary pl-3"
+                        : "text-muted-foreground border-l-2 border-transparent hover:text-foreground hover:border-border"
                     }`}
                   >
-                    <Icon size={16} className={isActive ? "text-secondary" : ""} />
+                    <Icon size={15} />
                     {tab.label}
                   </Link>
                 );
               })}
 
-              <div className="border-t border-border mt-3 pt-3">
+              <div className="border-t border-border mt-4 pt-4">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-red-50 hover:text-red-600 rounded-md transition-all"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-muted-foreground border-l-2 border-transparent hover:text-red-600 hover:border-red-300 transition-all"
                 >
-                  <LogOut size={16} />
+                  <LogOut size={15} />
                   Se déconnecter
                 </button>
               </div>
@@ -96,10 +135,7 @@ export function AccountLayout({ children, activeTab }: { children: React.ReactNo
           </aside>
 
           {/* Main content */}
-          <main className="flex-1 min-w-0">
-            {children}
-          </main>
-
+          <main className="flex-1 min-w-0">{children}</main>
         </div>
       </div>
     </Layout>
