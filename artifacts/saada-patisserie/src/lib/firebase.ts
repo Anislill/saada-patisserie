@@ -23,10 +23,12 @@ export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// Secondary app — used exclusively by admin login so admin sessions
-// never overwrite the customer's Firebase auth state in the store.
+// Secondary app — used exclusively by admin so admin sessions never
+// overwrite the customer's Firebase auth state, AND so admin Firestore
+// queries carry the admin's auth token (not the customer's).
 const adminAppName = 'admin-app';
 export const adminApp =
   getApps().find((a) => a.name === adminAppName) ??
   initializeApp(firebaseConfig, adminAppName);
 export const adminAuth = getAuth(adminApp);
+export const adminDb   = getFirestore(adminApp);

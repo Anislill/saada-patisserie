@@ -2,7 +2,7 @@ import {
   collection, doc, setDoc, deleteDoc, onSnapshot,
   getDocs, getDoc, query, where,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, adminDb } from './firebase';
 
 // ─────────────────── Cloudinary config ──────────────────
 const CLOUDINARY_CLOUD = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME as string;
@@ -384,17 +384,27 @@ export interface Order {
   };
 }
 
+/** Recursively remove undefined values so Firestore never rejects the write. */
+function deepClean(obj: unknown): unknown {
+  if (Array.isArray(obj)) return obj.map(deepClean);
+  if (obj !== null && typeof obj === 'object') {
+    return Object.fromEntries(
+      Object.entries(obj as Record<string, unknown>)
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]) => [k, deepClean(v)])
+    );
+  }
+  return obj;
+}
+
 export async function saveOrder(order: Order): Promise<void> {
   const { orderId, ...data } = order;
   // Strip `image` from each item — images are asset data-URLs that can be
   // several hundred KB each, quickly blowing past Firestore's 1 MB doc limit.
   // The productId is enough to re-associate images on the client if needed.
   const items = data.items.map(({ image: _img, ...item }) => item);
-  const payload = { ...data, items };
-  const clean = Object.fromEntries(
-    Object.entries(payload).filter(([, v]) => v !== undefined)
-  );
-  await setDoc(doc(db, 'orders', orderId), clean);
+  const payload = deepClean({ ...data, items }) as Record<string, unknown>;
+  await setDoc(doc(db, 'orders', orderId), payload);
 }
 
 /** Fetch all orders for a given user, sorted newest-first (client-side sort avoids composite index). */
@@ -406,13 +416,14 @@ export async function getUserOrders(uid: string): Promise<Order[]> {
 }
 
 /** Real-time listener for all orders — admin only.
- *  Uses no orderBy so no composite index is required; sorted client-side. */
+ *  Uses adminDb so the admin's auth token is sent with the request.
+ *  No orderBy to avoid needing a Firestore index; sorted client-side. */
 export function subscribeToAllOrders(
   callback: (orders: Order[]) => void,
   onError?: (err: Error) => void
 ): () => void {
   return onSnapshot(
-    collection(db, 'orders'),
+    collection(adminDb, 'orders'),
     (snap) => {
       const orders = snap.docs
         .map((d) => ({ orderId: d.id, ...d.data() } as Order))
@@ -424,7 +435,7 @@ export function subscribeToAllOrders(
 }
 
 export async function updateOrderStatus(orderId: string, status: OrderStatus): Promise<void> {
-  await setDoc(doc(db, 'orders', orderId), { status }, { merge: true });
+  await setDoc(doc(adminDb, 'orders', orderId), { status }, { merge: true });
 }
 
 /** Real-time listener for all customer profiles — admin only. */
@@ -433,7 +444,7 @@ export function subscribeToAllClients(
   onError?: (err: Error) => void
 ): () => void {
   return onSnapshot(
-    collection(db, 'users'),
+    collection(adminDb, 'users'),
     (snap) => callback(snap.docs.map((d) => ({ uid: d.id, ...d.data() } as CustomerProfile & { uid: string }))),
     (err) => onError?.(err as Error)
   );
