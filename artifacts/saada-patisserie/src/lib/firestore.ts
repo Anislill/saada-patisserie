@@ -1,6 +1,6 @@
 import {
   collection, doc, setDoc, deleteDoc, onSnapshot,
-  getDocs, getDoc, query, where, orderBy,
+  getDocs, getDoc, query, where,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -386,8 +386,13 @@ export interface Order {
 
 export async function saveOrder(order: Order): Promise<void> {
   const { orderId, ...data } = order;
+  // Strip `image` from each item — images are asset data-URLs that can be
+  // several hundred KB each, quickly blowing past Firestore's 1 MB doc limit.
+  // The productId is enough to re-associate images on the client if needed.
+  const items = data.items.map(({ image: _img, ...item }) => item);
+  const payload = { ...data, items };
   const clean = Object.fromEntries(
-    Object.entries(data).filter(([, v]) => v !== undefined)
+    Object.entries(payload).filter(([, v]) => v !== undefined)
   );
   await setDoc(doc(db, 'orders', orderId), clean);
 }
@@ -400,15 +405,20 @@ export async function getUserOrders(uid: string): Promise<Order[]> {
   return orders.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-/** Real-time listener for all orders — admin only. */
+/** Real-time listener for all orders — admin only.
+ *  Uses no orderBy so no composite index is required; sorted client-side. */
 export function subscribeToAllOrders(
   callback: (orders: Order[]) => void,
   onError?: (err: Error) => void
 ): () => void {
-  const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
   return onSnapshot(
-    q,
-    (snap) => callback(snap.docs.map((d) => ({ orderId: d.id, ...d.data() } as Order))),
+    collection(db, 'orders'),
+    (snap) => {
+      const orders = snap.docs
+        .map((d) => ({ orderId: d.id, ...d.data() } as Order))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      callback(orders);
+    },
     (err) => onError?.(err as Error)
   );
 }
