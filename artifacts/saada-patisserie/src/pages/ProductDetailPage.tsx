@@ -150,6 +150,12 @@ export default function ProductDetailPage() {
               ) : (
                 <span className="text-2xl font-medium text-foreground">{product.price} د.ت</span>
               )}
+              {product.prepTime && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-secondary/30 bg-secondary/5 text-secondary text-xs font-sans font-semibold tracking-wide">
+                  <Clock size={11} />
+                  min {product.prepTime.value}{product.prepTime.unit === "hours" ? "h" : "j"}
+                </span>
+              )}
             </div>
 
             <p className="text-muted-foreground leading-relaxed mb-8">
@@ -222,21 +228,6 @@ export default function ProductDetailPage() {
                 <ShieldCheck size={20} className="text-secondary" />
                 <span className="text-sm font-medium">Paiement Sécurisé</span>
               </div>
-              {product.prepTime && (
-                <div className="flex items-center gap-3 col-span-2">
-                  <Clock size={20} className="text-secondary shrink-0" />
-                  <span className="text-sm font-medium">
-                    Délai de préparation :{" "}
-                    <span className="text-muted-foreground font-normal">
-                      {product.prepTime.value}{" "}
-                      {product.prepTime.unit === "hours"
-                        ? `heure${product.prepTime.value > 1 ? "s" : ""}`
-                        : `jour${product.prepTime.value > 1 ? "s" : ""}`}{" "}
-                      minimum
-                    </span>
-                  </span>
-                </div>
-              )}
             </div>
 
             {/* Tabs */}
