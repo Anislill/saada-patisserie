@@ -4,12 +4,50 @@ import {
   EmailAuthProvider,
   updatePassword,
 } from "firebase/auth";
+import { User, MapPin, Lock, Eye, EyeOff } from "lucide-react";
 import { AccountLayout } from "@/components/layout/AccountLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/store/authStore";
 import { getUserProfile, saveUserProfile } from "@/lib/firestore";
+
+function ProfileSkeleton() {
+  return (
+    <AccountLayout activeTab="profil">
+      <div className="max-w-2xl space-y-6 animate-pulse">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="border border-border rounded-lg p-6">
+            <div className="h-4 w-36 bg-muted rounded mb-5" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="h-10 bg-muted rounded" />
+              <div className="h-10 bg-muted rounded" />
+              <div className="col-span-2 h-10 bg-muted rounded" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </AccountLayout>
+  );
+}
+
+function SectionCard({ icon: Icon, title, children }: {
+  icon: React.ElementType;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border border-border rounded-lg bg-background">
+      <div className="flex items-center gap-2.5 px-6 py-4 border-b border-border">
+        <Icon size={16} className="text-secondary shrink-0" />
+        <h3 className="text-sm font-medium text-foreground">{title}</h3>
+      </div>
+      <div className="px-6 py-5">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export default function ProfilePage() {
   const { toast } = useToast();
@@ -24,19 +62,17 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
 
-  // Password change state
   const [showPasswordForm, setShowPasswordForm] = React.useState(false);
   const [currentPassword, setCurrentPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [isChangingPassword, setIsChangingPassword] = React.useState(false);
+  const [showCurrentPw, setShowCurrentPw] = React.useState(false);
+  const [showNewPw, setShowNewPw] = React.useState(false);
+  const [showConfirmPw, setShowConfirmPw] = React.useState(false);
 
-  /* Load profile from Firestore on mount */
   React.useEffect(() => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
+    if (!user) { setIsLoading(false); return; }
     getUserProfile(user.uid)
       .then((profile) => {
         if (profile) {
@@ -67,13 +103,11 @@ export default function ProfilePage() {
 
     setIsChangingPassword(true);
     try {
-      // Re-authenticate before changing password (Firebase requirement)
       const credential = EmailAuthProvider.credential(user.email!, currentPassword);
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, newPassword);
 
       toast({ title: "Mot de passe modifié", description: "Votre mot de passe a été mis à jour avec succès." });
-      // Reset form
       setShowPasswordForm(false);
       setCurrentPassword("");
       setNewPassword("");
@@ -88,7 +122,7 @@ export default function ProfilePage() {
       } else if (code === "auth/weak-password") {
         msg = "Le nouveau mot de passe est trop faible (6 caractères minimum).";
       } else if (code === "auth/requires-recent-login") {
-        msg = "Session expirée. Veuillez vous déconnecter puis vous reconnecter avant de changer le mot de passe.";
+        msg = "Session expirée. Veuillez vous déconnecter puis vous reconnecter.";
       }
       toast({ title: "Erreur", description: msg, variant: "destructive" });
     } finally {
@@ -101,14 +135,7 @@ export default function ProfilePage() {
     if (!user) return;
     setIsSaving(true);
     try {
-      await saveUserProfile(user.uid, {
-        firstName,
-        lastName,
-        phone,
-        address,
-        postalCode,
-        city,
-      });
+      await saveUserProfile(user.uid, { firstName, lastName, phone, address, postalCode, city });
       toast({ title: "Profil mis à jour", description: "Vos informations ont été enregistrées." });
     } catch (err) {
       console.error("[profile] Save failed:", err);
@@ -118,164 +145,205 @@ export default function ProfilePage() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <AccountLayout activeTab="profil">
-        <div className="flex items-center justify-center py-20 text-muted-foreground text-sm">
-          Chargement…
-        </div>
-      </AccountLayout>
-    );
-  }
+  if (isLoading) return <ProfileSkeleton />;
 
   return (
     <AccountLayout activeTab="profil">
       <div className="max-w-2xl animate-in fade-in duration-500">
-        <h2 className="text-2xl font-serif mb-8">Informations Personnelles</h2>
+        <h2 className="text-2xl font-serif text-foreground mb-6">Informations Personnelles</h2>
 
-        <form onSubmit={handleSave} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Prénom</label>
-              <Input
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="Votre prénom"
-              />
+        <form onSubmit={handleSave} className="space-y-5">
+          {/* Personal info card */}
+          <SectionCard icon={User} title="Identité">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Prénom</label>
+                <Input
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Votre prénom"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nom</label>
+                <Input
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Votre nom"
+                />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Email</label>
+                <Input
+                  type="email"
+                  value={user?.email ?? ""}
+                  disabled
+                  className="bg-muted/50 text-muted-foreground"
+                />
+                <p className="text-xs text-muted-foreground">L'adresse email ne peut pas être modifiée.</p>
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Téléphone</label>
+                <Input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+216 XX XXX XXX"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Nom</label>
-              <Input
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Votre nom"
-              />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium">Email</label>
-              <Input
-                type="email"
-                value={user?.email ?? ""}
-                disabled
-                className="bg-muted"
-              />
-              <p className="text-xs text-muted-foreground mt-1">L'email ne peut pas être modifié.</p>
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium">Téléphone</label>
-              <Input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+216 XX XXX XXX"
-              />
-            </div>
-          </div>
+          </SectionCard>
 
-          {/* Address section */}
-          <div className="pt-4 border-t border-border">
-            <h3 className="text-base font-medium mb-4">Adresse de livraison</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-medium">Adresse</label>
+          {/* Address card */}
+          <SectionCard icon={MapPin} title="Adresse de livraison">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Adresse</label>
                 <Input
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="Numéro et nom de rue"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Code Postal</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Code Postal</label>
                 <Input
                   value={postalCode}
                   onChange={(e) => setPostalCode(e.target.value)}
-                  placeholder="Ex: 1000"
+                  placeholder="Ex : 1000"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Ville</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ville</label>
                 <Input
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="Ex: Tunis"
+                  placeholder="Ex : Tunis"
                 />
               </div>
             </div>
-          </div>
+          </SectionCard>
 
-          <div className="pt-6">
-            <Button type="submit" disabled={isSaving}>
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isSaving} className="min-w-[180px]">
               {isSaving ? "Enregistrement…" : "Enregistrer les modifications"}
             </Button>
           </div>
         </form>
 
-        <div className="mt-16 pt-8 border-t border-border">
-          <h3 className="text-lg font-medium mb-4">Mot de passe</h3>
+        {/* Password card — outside the main form */}
+        <div className="mt-5">
+          <SectionCard icon={Lock} title="Mot de passe">
+            {!showPasswordForm ? (
+              <Button variant="outline" size="sm" onClick={() => setShowPasswordForm(true)}>
+                Modifier mon mot de passe
+              </Button>
+            ) : (
+              <form onSubmit={handlePasswordChange} className="space-y-4 max-w-sm animate-in fade-in duration-300">
+                {/* Current password */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Mot de passe actuel
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showCurrentPw ? "text" : "password"}
+                      required
+                      placeholder="••••••••"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      disabled={isChangingPassword}
+                      autoComplete="current-password"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowCurrentPw(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showCurrentPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
 
-          {!showPasswordForm ? (
-            <Button variant="outline" onClick={() => setShowPasswordForm(true)}>
-              Modifier mon mot de passe
-            </Button>
-          ) : (
-            <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md animate-in fade-in duration-300">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Mot de passe actuel</label>
-                <Input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  disabled={isChangingPassword}
-                  autoComplete="current-password"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Nouveau mot de passe</label>
-                <Input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  disabled={isChangingPassword}
-                  autoComplete="new-password"
-                />
-                <p className="text-xs text-muted-foreground">6 caractères minimum.</p>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Confirmer le nouveau mot de passe</label>
-                <Input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={isChangingPassword}
-                  autoComplete="new-password"
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <Button type="submit" disabled={isChangingPassword}>
-                  {isChangingPassword ? "Modification…" : "Confirmer"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={isChangingPassword}
-                  onClick={() => {
-                    setShowPasswordForm(false);
-                    setCurrentPassword("");
-                    setNewPassword("");
-                    setConfirmPassword("");
-                  }}
-                >
-                  Annuler
-                </Button>
-              </div>
-            </form>
-          )}
+                {/* New password */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Nouveau mot de passe
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showNewPw ? "text" : "password"}
+                      required
+                      placeholder="••••••••"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      disabled={isChangingPassword}
+                      autoComplete="new-password"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowNewPw(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showNewPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">6 caractères minimum.</p>
+                </div>
+
+                {/* Confirm password */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Confirmer le nouveau mot de passe
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showConfirmPw ? "text" : "password"}
+                      required
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      disabled={isChangingPassword}
+                      autoComplete="new-password"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setShowConfirmPw(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showConfirmPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <Button type="submit" size="sm" disabled={isChangingPassword}>
+                    {isChangingPassword ? "Modification…" : "Confirmer"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isChangingPassword}
+                    onClick={() => {
+                      setShowPasswordForm(false);
+                      setCurrentPassword("");
+                      setNewPassword("");
+                      setConfirmPassword("");
+                    }}
+                  >
+                    Annuler
+                  </Button>
+                </div>
+              </form>
+            )}
+          </SectionCard>
         </div>
       </div>
     </AccountLayout>

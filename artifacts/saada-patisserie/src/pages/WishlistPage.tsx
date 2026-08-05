@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Link } from "wouter";
+import { Heart } from "lucide-react";
 import { AccountLayout } from "@/components/layout/AccountLayout";
 import { ProductCard } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -14,15 +15,30 @@ export default function WishlistPage() {
   return (
     <AccountLayout activeTab="favoris">
       <div className="animate-in fade-in duration-500">
-        <h2 className="text-2xl font-serif mb-8">Mes Favoris</h2>
-        
+        <div className="mb-8">
+          <h2 className="text-2xl font-serif text-foreground">Mes Favoris</h2>
+          {wishlistedProducts.length > 0 && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {wishlistedProducts.length} produit{wishlistedProducts.length > 1 ? "s" : ""} sauvegardé{wishlistedProducts.length > 1 ? "s" : ""}
+            </p>
+          )}
+        </div>
+
         {wishlistedProducts.length === 0 ? (
-          <div className="text-center py-12 bg-muted/20 border border-border">
-            <p className="text-muted-foreground mb-4">Votre liste de favoris est vide.</p>
-            <Link href="/boutique"><Button>Explorer la boutique</Button></Link>
+          <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-border rounded-lg bg-muted/10">
+            <div className="w-14 h-14 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+              <Heart size={24} className="text-muted-foreground" />
+            </div>
+            <p className="font-medium text-foreground mb-1">Votre liste de favoris est vide</p>
+            <p className="text-sm text-muted-foreground mb-6 max-w-xs">
+              Ajoutez des produits à vos favoris pour les retrouver facilement.
+            </p>
+            <Link href="/boutique">
+              <Button size="sm">Explorer la boutique</Button>
+            </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {wishlistedProducts.map(product => (
               <ProductCard key={product.id} product={product} />
             ))}
