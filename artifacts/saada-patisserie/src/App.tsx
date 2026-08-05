@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useAuthStore } from '@/store/authStore';
+import { useWishlistStore } from '@/store/wishlistStore';
 
 // Customer Pages
 import HomePage from '@/pages/HomePage';
@@ -41,12 +42,16 @@ const queryClient = new QueryClient();
 /** Global Firebase auth listener — runs once for the whole app lifetime. */
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const { setUser, setLoading } = useAuthStore();
+  const loadWishlistForUser = useWishlistStore((s) => s.loadForUser);
   const [, setLocation] = useLocation();
 
   React.useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
+
+      // Load or clear the wishlist for the current user (per-UID isolation)
+      loadWishlistForUser(firebaseUser?.uid ?? null);
 
       // If session expires while on an admin page, redirect to login
       if (!firebaseUser && window.location.pathname.includes('/admin/')) {
