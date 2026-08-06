@@ -1,50 +1,35 @@
 # Saada Pâtisserie
 
-A full-stack pâtisserie e-commerce web app with customer-facing shop, cart, checkout, order tracking, wishlist, and an admin panel.
+A full-stack e-commerce web application for a pastry shop, built with React + Vite on the frontend and an Express API server on the backend.
 
 ## Stack
 
-- **Frontend**: React + Vite + TypeScript (`artifacts/saada-patisserie/`)
-- **Backend**: Express + TypeScript (`artifacts/api-server/`)
-- **Auth & DB**: Firebase Auth + Firestore
-- **Images**: Cloudinary
-- **Routing**: Wouter
-- **State**: Zustand + TanStack Query
-- **i18n**: i18next (multi-language support)
+- **Frontend**: React, Vite, Tailwind CSS, shadcn/ui, Framer Motion, Zustand, TanStack Query, Wouter
+- **Backend**: Express 5, TypeScript, esbuild
+- **Auth & Database**: Firebase (Firestore + Firebase Auth)
+- **i18n**: i18next with browser language detection
+- **Monorepo**: pnpm workspaces
 
-## How to run
+## Running the project
 
-Both workflows start automatically:
+Both services start automatically via the configured workflows:
 
-| Workflow | Command | Port |
-|---|---|---|
-| `artifacts/saada-patisserie: web` | `PORT=5173 BASE_PATH=/ pnpm --filter @workspace/saada-patisserie run dev` | 5173 |
-| `artifacts/api-server: API Server` | `PORT=8080 BASE_PATH=/api pnpm --filter @workspace/api-server run dev` | 8080 |
+| Service | Workflow | Port |
+|---------|----------|------|
+| Frontend (saada-patisserie) | `artifacts/saada-patisserie: web` | 5173 |
+| API Server | `artifacts/api-server: API Server` | 8080 |
 
-## Environment variables
+## Environment variables / secrets
 
-All secrets are stored in Replit Secrets. Required vars:
+All Firebase credentials are stored as Replit secrets (`VITE_FIREBASE_*`). Do not hard-code these values.
 
-- `VITE_FIREBASE_API_KEY`
-- `VITE_FIREBASE_AUTH_DOMAIN`
-- `VITE_FIREBASE_PROJECT_ID`
-- `VITE_FIREBASE_STORAGE_BUCKET`
-- `VITE_FIREBASE_MESSAGING_SENDER_ID`
-- `VITE_FIREBASE_APP_ID`
-- `VITE_CLOUDINARY_CLOUD_NAME` (in `.replit` shared env)
-- `VITE_CLOUDINARY_UPLOAD_PRESET` (in `.replit` shared env)
-- `SESSION_SECRET`
-- `GITHUB_PAT`
+## Development workflow
 
-## Git
-
-Remote: `Anislill/saada-patisserie` on GitHub. After each task, commit and push with:
-
-```bash
-git add -A && git commit -m "message" && git push origin main
-```
+1. Make changes
+2. Verify in the preview pane (frontend at `/`)
+3. Commit and push to GitHub (`origin main`) after each completed task
 
 ## User preferences
 
-- After each completed task: verify it works, then commit and push to GitHub.
-- Only implement tasks explicitly requested — no unsolicited changes.
+- After each completed task: verify everything works, then commit and push to GitHub.
+- Only implement tasks explicitly requested — no unsolicited additions.
