@@ -292,7 +292,7 @@ function ProductsTab() {
                 <tr key={product.id} className="hover:bg-muted/20 transition-colors">
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
-                      {product.images[0] && (
+                      {Array.isArray(product.images) && product.images[0] && (
                         <div className="w-9 h-9 shrink-0 overflow-hidden border border-border rounded-sm bg-muted">
                           <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
                         </div>
@@ -301,7 +301,7 @@ function ProductsTab() {
                     </div>
                   </td>
                   <td className="px-5 py-3 text-muted-foreground hidden md:table-cell">
-                    {product.categories.filter(c => !["bestsellers","featured"].includes(c))[0] ?? "—"}
+                    {(Array.isArray(product.categories) ? product.categories.filter(c => !["bestsellers","featured"].includes(c))[0] : undefined) ?? "—"}
                   </td>
                   <td className="px-5 py-3 font-medium">
                     {product.price} د.ت
