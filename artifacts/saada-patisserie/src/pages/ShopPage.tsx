@@ -175,7 +175,7 @@ export default function ShopPage() {
   const categoryMap = React.useMemo(() => {
     const map: Record<string, number> = {};
     SEED_CATEGORIES.forEach(cat => {
-      map[cat.slug] = allStoreProducts.filter(p => p.categories.includes(cat.name)).length;
+      map[cat.slug] = allStoreProducts.filter(p => Array.isArray(p.categories) && p.categories.includes(cat.name)).length;
     });
     return map;
   }, [allStoreProducts]);
