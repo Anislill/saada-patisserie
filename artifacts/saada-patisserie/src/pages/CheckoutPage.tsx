@@ -9,6 +9,7 @@ import { usePromoStore } from "@/store/promoStore";
 import { useAuthStore } from "@/store/authStore";
 import { getUserProfile, saveUserProfile, saveOrder, type Coupon, type OrderItem } from "@/lib/firestore";
 import { useProductStore } from "@/store/productStore";
+import { useSiteSettingsStore } from "@/store/siteSettingsStore";
 
 /* ── Stepper ── */
 function Stepper({ step }: { step: number }) {
@@ -199,7 +200,10 @@ export default function CheckoutPage() {
   const [couponError, setCouponError] = React.useState("");
 
   const total = getTotal();
-  const deliveryFee = total >= 100 ? 0 : 9.9;
+  const { settings } = useSiteSettingsStore();
+  const feeAmount   = parseFloat(settings.deliveryFee) || 0;
+  const freeFrom    = parseFloat(settings.freeDeliveryFrom) || Infinity;
+  const deliveryFee = total >= freeFrom ? 0 : feeAmount;
   const discount = appliedCoupon ? Math.round((total * appliedCoupon.discount) / 100 * 100) / 100 : 0;
   const finalTotal = total + deliveryFee - discount;
 

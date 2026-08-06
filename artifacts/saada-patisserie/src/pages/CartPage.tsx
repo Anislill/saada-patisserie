@@ -7,6 +7,7 @@ import { SectionReveal } from "@/components/SectionReveal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCartStore } from "@/store/cartStore";
+import { useSiteSettingsStore } from "@/store/siteSettingsStore";
 
 export default function CartPage() {
   const { t } = useTranslation();
@@ -14,7 +15,10 @@ export default function CartPage() {
   const { items, updateQuantity, removeItem, getTotal } = useCartStore();
 
   const total = getTotal();
-  const delivery = total > 100 ? 0 : 9.90;
+  const { settings } = useSiteSettingsStore();
+  const feeAmount = parseFloat(settings.deliveryFee) || 0;
+  const freeFrom  = parseFloat(settings.freeDeliveryFrom) || Infinity;
+  const delivery  = total >= freeFrom ? 0 : feeAmount;
 
   if (items.length === 0) {
     return (
