@@ -146,9 +146,11 @@ export default function ShopPage() {
   const allStoreProducts = useProductStore((s) => s.products);
 
   const [priceMin, priceMax] = React.useMemo(() => {
-    const prices = allStoreProducts.map(p => p.discountedPrice ?? p.price);
+    const prices = allStoreProducts
+      .map(p => p.discountedPrice ?? p.price)
+      .filter((v): v is number => typeof v === "number" && !isNaN(v) && isFinite(v));
     if (!prices.length) return [0, 1000];
-    return [Math.min(...prices), Math.max(...prices)];
+    return [Math.floor(Math.min(...prices)), Math.ceil(Math.max(...prices))];
   }, [allStoreProducts]);
 
   const [activeCategories, setActiveCategories] = React.useState<string[]>(
@@ -225,10 +227,17 @@ export default function ShopPage() {
       result = result.filter(p => p.flavors?.some(f => activeFlavors.includes(f)));
     }
 
-    result = result.filter(p => {
-      const effective = p.discountedPrice ?? p.price;
-      return effective >= priceRange[0] && effective <= priceRange[1];
-    });
+    // Only apply price filter if the range is not the full range and priceRange is valid
+    const priceRangeActive =
+      !isNaN(priceRange[0]) && !isNaN(priceRange[1]) &&
+      (priceRange[0] > priceMin || priceRange[1] < priceMax);
+    if (priceRangeActive) {
+      result = result.filter(p => {
+        const effective = p.discountedPrice ?? p.price;
+        if (typeof effective !== "number" || isNaN(effective)) return true; // no price → don't hide
+        return effective >= priceRange[0] && effective <= priceRange[1];
+      });
+    }
 
     if (sortBy === "price-asc")
       result.sort((a, b) => (a.discountedPrice ?? a.price) - (b.discountedPrice ?? b.price));
