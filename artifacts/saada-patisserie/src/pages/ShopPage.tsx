@@ -155,11 +155,16 @@ export default function ShopPage() {
     searchParams.get("category") ? [searchParams.get("category")!] : []
   );
   const [activeFlavors, setActiveFlavors] = React.useState<string[]>([]);
-  const [priceRange, setPriceRange] = React.useState<[number, number]>(() => {
-    const prices = allStoreProducts.map(p => p.discountedPrice ?? p.price);
-    if (!prices.length) return [0, 1000];
-    return [Math.min(...prices), Math.max(...prices)];
-  });
+  const [priceRange, setPriceRange] = React.useState<[number, number]>([0, 1000]);
+
+  // Sync price range when products first load from Firestore
+  const priceInitialized = React.useRef(false);
+  React.useEffect(() => {
+    if (!priceInitialized.current && allStoreProducts.length > 0) {
+      priceInitialized.current = true;
+      setPriceRange([priceMin, priceMax]);
+    }
+  }, [allStoreProducts.length, priceMin, priceMax]);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = React.useState(false);
   const [sortBy, setSortBy] = React.useState("default");
 
@@ -211,7 +216,7 @@ export default function ShopPage() {
       result = result.filter(p =>
         activeCategories.some(slug => {
           const name = SEED_CATEGORIES.find(c => c.slug === slug)?.name;
-          return name && p.categories.includes(name);
+          return name && Array.isArray(p.categories) && p.categories.includes(name);
         })
       );
     }
@@ -393,7 +398,15 @@ export default function ShopPage() {
               </div>
 
               {/* drawer footer */}
-              <div className="p-5 border-t border-border bg-muted/20">
+              <div className="p-5 border-t border-border bg-muted/20 flex flex-col gap-3">
+                {activeCount > 0 && (
+                  <button
+                    onClick={resetAll}
+                    className="w-full text-sm uppercase tracking-widest border border-border py-2.5 px-4 hover:bg-muted transition-colors"
+                  >
+                    Effacer les filtres ({activeCount})
+                  </button>
+                )}
                 <Button onClick={() => setIsMobileFiltersOpen(false)} className="w-full">
                   Voir {filteredProducts.length} résultat{filteredProducts.length !== 1 ? "s" : ""}
                 </Button>
