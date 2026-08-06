@@ -5,9 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSiteSettingsStore } from "@/store/siteSettingsStore";
 
 export default function ContactPage() {
   const { toast } = useToast();
+  const { settings } = useSiteSettingsStore();
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,34 +40,46 @@ export default function ContactPage() {
             <div>
               <h2 className="text-2xl font-serif mb-8">Nos coordonnées</h2>
               <div className="space-y-6">
-                <div className="flex items-start gap-4">
-                  <MapPin className="text-secondary shrink-0 mt-1" />
-                  <div>
-                    <h3 className="font-medium">Boutique & Atelier</h3>
-                    <p className="text-muted-foreground text-sm mt-1">123 rue Saint-Honoré<br/>75001 Paris, France</p>
+                {settings.address && (
+                  <div className="flex items-start gap-4">
+                    <MapPin className="text-secondary shrink-0 mt-1" />
+                    <div>
+                      <h3 className="font-medium">Boutique & Atelier</h3>
+                      <p className="text-muted-foreground text-sm mt-1 whitespace-pre-line">{settings.address}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-start gap-4">
-                  <Phone className="text-secondary shrink-0 mt-1" />
-                  <div>
-                    <h3 className="font-medium">Téléphone</h3>
-                    <p className="text-muted-foreground text-sm mt-1">+33 1 42 00 00 00</p>
+                )}
+                {settings.phone && (
+                  <div className="flex items-start gap-4">
+                    <Phone className="text-secondary shrink-0 mt-1" />
+                    <div>
+                      <h3 className="font-medium">Téléphone</h3>
+                      <p className="text-muted-foreground text-sm mt-1">
+                        <a href={`tel:${settings.phone}`} className="hover:text-secondary transition-colors">{settings.phone}</a>
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-start gap-4">
-                  <Mail className="text-secondary shrink-0 mt-1" />
-                  <div>
-                    <h3 className="font-medium">Email</h3>
-                    <p className="text-muted-foreground text-sm mt-1">contact@saada-patisserie.com</p>
+                )}
+                {settings.email && (
+                  <div className="flex items-start gap-4">
+                    <Mail className="text-secondary shrink-0 mt-1" />
+                    <div>
+                      <h3 className="font-medium">Email</h3>
+                      <p className="text-muted-foreground text-sm mt-1">
+                        <a href={`mailto:${settings.email}`} className="hover:text-secondary transition-colors">{settings.email}</a>
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-start gap-4">
-                  <Clock className="text-secondary shrink-0 mt-1" />
-                  <div>
-                    <h3 className="font-medium">Horaires</h3>
-                    <p className="text-muted-foreground text-sm mt-1">Mardi - Dimanche : 10h00 - 19h30<br/>Fermé le Lundi</p>
+                )}
+                {settings.openingHours && (
+                  <div className="flex items-start gap-4">
+                    <Clock className="text-secondary shrink-0 mt-1" />
+                    <div>
+                      <h3 className="font-medium">Horaires</h3>
+                      <p className="text-muted-foreground text-sm mt-1 whitespace-pre-line">{settings.openingHours}</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </SectionReveal>

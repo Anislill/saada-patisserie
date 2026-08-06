@@ -1092,6 +1092,7 @@ function SettingsTab() {
             {field("Téléphone", "phone", "tel", "+33 6 00 00 00 00")}
             {field("Adresse", "address", "text", "12 rue de la Paix")}
             {field("Ville", "city", "text", "Paris")}
+            {field("Horaires d'ouverture", "openingHours", "text", "Mardi - Dimanche : 10h00 - 19h30")}
             <div>
               <label className="text-sm font-medium block mb-1.5">Devise</label>
               <select

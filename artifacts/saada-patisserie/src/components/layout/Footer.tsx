@@ -5,9 +5,11 @@ import { Facebook, Instagram, Twitter } from "lucide-react";
 import logoPath from "@assets/logo-white.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSiteSettingsStore } from "@/store/siteSettingsStore";
 
 export default function Footer() {
   const { t } = useTranslation();
+  const { settings } = useSiteSettingsStore();
 
   return (
     <footer className="bg-primary text-primary-foreground pt-16 pb-8 border-t-4 border-secondary">
@@ -23,15 +25,18 @@ export default function Footer() {
               {t('footer.tagline')}
             </p>
             <div className="flex gap-4">
-              <a href="#" className="w-10 h-10 rounded-full border border-secondary flex items-center justify-center hover:bg-secondary hover:text-primary transition-colors">
-                <Instagram size={18} />
-              </a>
-              <a href="#" className="w-10 h-10 rounded-full border border-secondary flex items-center justify-center hover:bg-secondary hover:text-primary transition-colors">
-                <Facebook size={18} />
-              </a>
-              <a href="#" className="w-10 h-10 rounded-full border border-secondary flex items-center justify-center hover:bg-secondary hover:text-primary transition-colors">
-                <Twitter size={18} />
-              </a>
+              {settings.instagram && (
+                <a href={settings.instagram} target="_blank" rel="noopener noreferrer"
+                  className="w-10 h-10 rounded-full border border-secondary flex items-center justify-center hover:bg-secondary hover:text-primary transition-colors">
+                  <Instagram size={18} />
+                </a>
+              )}
+              {settings.facebook && (
+                <a href={settings.facebook} target="_blank" rel="noopener noreferrer"
+                  className="w-10 h-10 rounded-full border border-secondary flex items-center justify-center hover:bg-secondary hover:text-primary transition-colors">
+                  <Facebook size={18} />
+                </a>
+              )}
             </div>
           </div>
 

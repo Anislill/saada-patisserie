@@ -259,6 +259,7 @@ export interface SiteSettings {
   instagram?: string;
   facebook?: string;
   whatsapp?: string;
+  openingHours?: string;
   announcementBar?: string;
   announcementActive?: boolean;
 }
@@ -276,6 +277,7 @@ export const DEFAULT_SETTINGS: Required<SiteSettings> = {
   instagram: '',
   facebook: '',
   whatsapp: '',
+  openingHours: '',
   announcementBar: 'Livraison gratuite à partir de 100 د.ت d\'achats · Découvrez notre nouvelle collection',
   announcementActive: true,
 };
