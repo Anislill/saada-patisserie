@@ -149,6 +149,15 @@ export function ProductCard({ product }: { product: Product }) {
             )}
           </div>
 
+          {/* Prep time badge */}
+          {product.prepTime && (
+            <div className="flex items-center justify-center mb-2">
+              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground border border-border/60 rounded-full px-2 py-0.5">
+                ⏱ min {product.prepTime.value}{product.prepTime.unit === "hours" ? "h" : "j"}
+              </span>
+            </div>
+          )}
+
           {/* Quantity selector */}
           <div className="flex items-center justify-center mb-3">
             <div className="flex items-center border border-border rounded-sm overflow-hidden">
