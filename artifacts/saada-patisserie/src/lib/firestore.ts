@@ -248,6 +248,20 @@ export async function deleteProductFromFirestore(id: string): Promise<void> {
 
 export interface SiteSettings {
   heroImageUrl?: string;
+  aboutImageUrl?: string;
+  aboutHeroTitle?: string;
+  aboutHeroQuote?: string;
+  aboutStoryTitle?: string;
+  aboutStoryParagraph1?: string;
+  aboutStoryParagraph2?: string;
+  aboutStoryParagraph3?: string;
+  aboutValuesTitle?: string;
+  aboutValue1Title?: string;
+  aboutValue1Text?: string;
+  aboutValue2Title?: string;
+  aboutValue2Text?: string;
+  aboutValue3Title?: string;
+  aboutValue3Text?: string;
   storeName?: string;
   email?: string;
   phone?: string;
@@ -266,6 +280,20 @@ export interface SiteSettings {
 
 export const DEFAULT_SETTINGS: Required<SiteSettings> = {
   heroImageUrl: '',
+  aboutImageUrl: '',
+  aboutHeroTitle: 'Notre Histoire',
+  aboutHeroQuote: "L'alliance de l'élégance parisienne et de la générosité orientale.",
+  aboutStoryTitle: 'Une passion transmise',
+  aboutStoryParagraph1: "Fondée en 1998, Saada Pâtisserie est née d'un rêve : marier la précision de la haute pâtisserie française avec les saveurs chaudes et réconfortantes du Moyen-Orient. Ce qui a commencé comme un petit atelier s'est transformé en une véritable institution du goût.",
+  aboutStoryParagraph2: "Chaque jour, nos maîtres artisans sélectionnent avec le plus grand soin nos matières premières. Les pistaches arrivent tout droit d'Iran, les amandes de Sicile, l'eau de rose de Damas, et notre beurre bénéficie de l'Appellation d'Origine Protégée.",
+  aboutStoryParagraph3: "Il n'y a pas de secret, seulement du temps, de la rigueur et beaucoup d'amour. Nos feuilletages sont travaillés à la main, nos cuissons surveillées à la seconde près, pour vous offrir un croustillant et un fondant inégalés.",
+  aboutValuesTitle: 'Nos Valeurs',
+  aboutValue1Title: 'Excellence',
+  aboutValue1Text: "Le refus du compromis. Seuls les meilleurs ingrédients franchissent les portes de notre atelier.",
+  aboutValue2Title: 'Artisanat',
+  aboutValue2Text: "Le geste précis, la main qui façonne. Toutes nos créations sont confectionnées de manière traditionnelle.",
+  aboutValue3Title: 'Générosité',
+  aboutValue3Text: "Parce qu'une pâtisserie est avant tout un moment de partage, nous mettons tout notre cœur dans nos recettes.",
   storeName: 'Saada Pâtisserie',
   email: 'contact@saada-patisserie.com',
   phone: '',

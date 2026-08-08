@@ -18,6 +18,7 @@ import {
   AlertCircle, Image
 } from "lucide-react";
 import logoPath from "@assets/0_file_00000000873481f494288e53319f68ef-removebg-preview_1785313194757.png";
+import aboutDefaultImage from "@assets/generated_images/hero-2.jpg";
 import { useSiteSettingsStore } from "@/store/siteSettingsStore";
 
 /* ─────────────────────────── types ─────────────────────────── */
@@ -910,25 +911,60 @@ function PromotionsTab() {
 function ContenuTab() {
   const { settings, updateSettings, saveSettings } = useSiteSettingsStore();
   const [inputUrl, setInputUrl] = React.useState(settings.heroImageUrl ?? "");
+  const [aboutImageUrl, setAboutImageUrl] = React.useState(settings.aboutImageUrl ?? "");
   const [saved, setSaved] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  const [uploading, setUploading] = React.useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
   const [previewError, setPreviewError] = React.useState(false);
+  const [aboutPreviewError, setAboutPreviewError] = React.useState(false);
+
+  React.useEffect(() => {
+    setInputUrl(settings.heroImageUrl ?? "");
+    setAboutImageUrl(settings.aboutImageUrl ?? "");
+  }, [settings.heroImageUrl, settings.aboutImageUrl]);
 
   const save = async () => {
     setSaving(true);
     setSaveError(null);
     try {
-      updateSettings({ heroImageUrl: inputUrl.trim() });
+      updateSettings({
+        heroImageUrl: inputUrl.trim(),
+        aboutImageUrl: aboutImageUrl.trim(),
+      });
       await saveSettings();
       setSaved(true);
       setPreviewError(false);
+      setAboutPreviewError(false);
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
       setSaveError("Erreur de sauvegarde. Vérifiez les règles Firebase.");
       console.error("ContenuTab save error:", err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAboutImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setSaveError("Veuillez sélectionner une image JPG, PNG ou WebP.");
+      e.target.value = "";
+      return;
+    }
+    setUploading(true);
+    setSaveError(null);
+    try {
+      const url = await uploadFileToStorage(file, `content/about/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, "-")}`);
+      setAboutImageUrl(url);
+      setAboutPreviewError(false);
+    } catch (err) {
+      console.error("About image upload error:", err);
+      setSaveError("Erreur lors du téléchargement de l'image. Vérifiez la configuration Cloudinary.");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -949,9 +985,146 @@ function ContenuTab() {
     }
   };
 
+  const resetAboutImage = () => {
+    setAboutImageUrl("");
+    setAboutPreviewError(false);
+  };
+
+  type AboutTextKey =
+    | "aboutHeroTitle"
+    | "aboutHeroQuote"
+    | "aboutStoryTitle"
+    | "aboutStoryParagraph1"
+    | "aboutStoryParagraph2"
+    | "aboutStoryParagraph3"
+    | "aboutValuesTitle"
+    | "aboutValue1Title"
+    | "aboutValue1Text"
+    | "aboutValue2Title"
+    | "aboutValue2Text"
+    | "aboutValue3Title"
+    | "aboutValue3Text";
+
+  const aboutText = (label: string, key: AboutTextKey, multiline = false) => (
+    <div>
+      <label className="text-sm font-medium block mb-1.5">{label}</label>
+      {multiline ? (
+        <textarea
+          value={settings[key]}
+          onChange={(e) => updateSettings({ [key]: e.target.value })}
+          rows={4}
+          className="w-full border border-input bg-background rounded-sm px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+      ) : (
+        <Input
+          value={settings[key]}
+          onChange={(e) => updateSettings({ [key]: e.target.value })}
+        />
+      )}
+    </div>
+  );
+
   return (
     <div>
-      <h2 className="text-2xl font-serif mb-6">Contenu de la boutique</h2>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+        <div>
+          <h2 className="text-2xl font-serif">Contenu de la boutique</h2>
+          <p className="text-sm text-muted-foreground mt-1">Gérez les images et les textes visibles sur le site.</p>
+        </div>
+        <Button onClick={save} disabled={saving || uploading} className="bg-secondary text-white hover:bg-secondary/90 rounded-sm">
+          {saving ? "Sauvegarde…" : saved ? "✓ Enregistré" : "Enregistrer les modifications"}
+        </Button>
+      </div>
+      {saveError && (
+        <div className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-sm mb-6 text-sm">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <span>{saveError}</span>
+        </div>
+      )}
+
+      {/* À propos */}
+      <section className="bg-background border border-border rounded-sm p-6 space-y-6 mb-6">
+        <div>
+          <h3 className="font-serif text-lg flex items-center gap-2">
+            <Store size={18} /> Page « À propos »
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Tous les champs ci-dessous sont affichés directement sur la page publique « À propos ».
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">En-tête</h4>
+          {aboutText("Titre principal", "aboutHeroTitle")}
+          {aboutText("Citation d'introduction", "aboutHeroQuote")}
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">Image et histoire</h4>
+          <div className="space-y-3">
+            <label className="text-sm font-medium block">Image de la page « À propos »</label>
+            <div className="flex flex-wrap gap-3">
+              <label className="inline-flex items-center justify-center px-4 py-2 rounded-sm bg-primary text-primary-foreground text-sm cursor-pointer hover:bg-primary/90 transition-colors">
+                {uploading ? "Téléchargement…" : "Télécharger une nouvelle image"}
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAboutImageUpload} disabled={uploading} />
+              </label>
+              {aboutImageUrl && (
+                <Button type="button" variant="outline" onClick={resetAboutImage} disabled={uploading} className="rounded-sm">
+                  Utiliser l'image par défaut
+                </Button>
+              )}
+            </div>
+            <Input
+              value={aboutImageUrl}
+              onChange={(e) => {
+                setAboutImageUrl(e.target.value);
+                setAboutPreviewError(false);
+              }}
+              placeholder="Ou collez l'URL directe d'une image"
+              className="font-mono text-xs"
+            />
+            <div className="relative w-full max-w-sm aspect-[4/5] overflow-hidden rounded-sm border border-border bg-muted/30">
+              {aboutPreviewError ? (
+                <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground p-4 text-center">Image non chargée — vérifiez l'URL</div>
+              ) : (
+                <img
+                  src={aboutImageUrl || settings.aboutImageUrl || aboutDefaultImage}
+                  alt="Aperçu de l'image À propos"
+                  className="w-full h-full object-cover"
+                  onError={() => setAboutPreviewError(true)}
+                  onLoad={() => setAboutPreviewError(false)}
+                />
+              )}
+            </div>
+          </div>
+          {aboutText("Titre de l'histoire", "aboutStoryTitle")}
+          {aboutText("Premier paragraphe", "aboutStoryParagraph1", true)}
+          {aboutText("Deuxième paragraphe", "aboutStoryParagraph2", true)}
+          {aboutText("Troisième paragraphe", "aboutStoryParagraph3", true)}
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">Valeurs</h4>
+          {aboutText("Titre de la section", "aboutValuesTitle")}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+            <div className="space-y-4 border border-border rounded-sm p-4">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Valeur 1</p>
+              {aboutText("Titre", "aboutValue1Title")}
+              {aboutText("Description", "aboutValue1Text", true)}
+            </div>
+            <div className="space-y-4 border border-border rounded-sm p-4">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Valeur 2</p>
+              {aboutText("Titre", "aboutValue2Title")}
+              {aboutText("Description", "aboutValue2Text", true)}
+            </div>
+            <div className="space-y-4 border border-border rounded-sm p-4">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Valeur 3</p>
+              {aboutText("Titre", "aboutValue3Title")}
+              {aboutText("Description", "aboutValue3Text", true)}
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Hero Image Section */}
       <section className="bg-background border border-border rounded-sm p-6 space-y-5">
